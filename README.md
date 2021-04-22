@@ -1,3 +1,4 @@
+# calculate-eth-taxes
 Generate Form 8949 data for US taxes on ETH
 
 ## Setup
@@ -8,3 +9,10 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+## Instructions
+- Locate hardware wallet addresses
+- For each address, export CSV of transactions from etherscan.io (start time range at first ever transaction date)
+- Export Coinbase CSV & remove header
+- Pass CSVs to generate_ledger.py
+- Pass ledger.csv file and wallet addresses to main.py
