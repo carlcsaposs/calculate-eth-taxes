@@ -137,6 +137,12 @@ for etherscan_csv in ETHERSCAN_CSVS:
             # Check that there is not an ETH input *and* an ETH output
             assert eth_in == 0 or eth_out == 0
             amount_eth = eth_in or eth_out
+            # Check for error
+            if row["Status"] == "Error(0)" and row["ErrCode"] == "Out of gas":
+                # If there is an error, no ETH will be transferred but the fee will still be lost
+                amount_eth = 0
+            else:
+                assert row["Status"] == "" and row["ErrCode"] == ""
 
             etherscan_transaction = {
                 "type": "output",
