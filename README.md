@@ -15,4 +15,5 @@ pip install -r requirements.txt
 - For each address, export CSV of transactions from etherscan.io (start time range at first ever transaction date)
 - Export Coinbase CSV & remove header
 - Pass CSVs to generate_ledger.py
+- Export internal transactions from etherscan.io and manually add to ledger (e.g. by subtracting from another output transaction)
 - Pass ledger.csv file and wallet addresses to main.py
