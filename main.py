@@ -143,7 +143,7 @@ class Wallet:
 
         Return list of inputs removed"""
         removed_inputs = []
-        while amount_eth > 0:
+        while amount_eth > 0.00000001:  # Account for Coinbase rounding
             first_input = self.inputs[0]
             if amount_eth < first_input.eth_out:
                 # Remove part of input
@@ -276,11 +276,12 @@ with open(SPENT_INPUTS_CSV, "w") as file:
                 # (or more than one calendar year including the date of acquisition)
                 "is_long_term": acquired.date().replace(year=acquired.year + 1)
                 < sold.date(),
-                "description": f"{spent_input.eth_out} ETH",
+                # Coinbase transactions are only precise to the 8th digit after the decimal
+                "description": f"{round(spent_input.eth_out, 8)} ETH",
                 "date_acquired": acquired.strftime("%m/%d/%Y"),
                 "date_sold": sold.strftime("%m/%d/%Y"),
-                "usd_out": spent_input.usd_out,
-                "usd_in": spent_input.calculate_usd_in(),
+                "usd_out": round(spent_input.usd_out),
+                "usd_in": round(spent_input.calculate_usd_in()),
             }
         )
 print(f"\nSpent inputs exported to {SPENT_INPUTS_CSV}")
