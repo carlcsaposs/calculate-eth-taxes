@@ -33,11 +33,16 @@ def convert_timestamp_to_unix_time(timestamp: str) -> int:
     return unix_time
 
 
-def find_closest_coinbase_transaction(etherscan_transaction, coinbase_transactions):
+def find_closest_coinbase_transaction(
+    etherscan_transaction, coinbase_transactions_by_type
+):
     """Find Coinbase transaction which has the closest timestamp to Etherscan.io transaction"""
     closest_transaction_type = ""
     closest_transaction = {"timestamp": 0}
-    for transaction_type, coinbase_transactions in coinbase_transactions.items():
+    for (
+        transaction_type,
+        coinbase_transactions,
+    ) in coinbase_transactions_by_type.items():
         coinbase_transaction_timestamps = [
             transaction["timestamp"] for transaction in coinbase_transactions
         ]
