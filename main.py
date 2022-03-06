@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import csv
 import datetime
-import typing
 
 
 class Transaction:
@@ -138,7 +137,7 @@ class Wallet:
         """Add ETH input to wallet"""
         self.inputs.append(input_)
 
-    def remove_eth(self, amount_eth: float) -> typing.List[Input]:
+    def remove_eth(self, amount_eth: float) -> list[Input]:
         """Remove ETH from inputs using first in, first out
 
         Return list of inputs removed"""
@@ -178,7 +177,7 @@ with open(WALLET_ADDRESSES_FILE, "r") as file:
 MY_WALLET_ADDRESSES = [address.lower() for address in MY_WALLET_ADDRESSES]
 
 # Convert ledger CSV to list of Transaction objects
-TRANSACTIONS: typing.List[Transaction] = []
+TRANSACTIONS: list[Transaction] = []
 with open(LEDGER_CSV, "r") as file:
     for row in csv.DictReader(file):
         if row["type"] == "input":
@@ -218,7 +217,7 @@ with open(LEDGER_CSV, "r") as file:
         else:
             raise ValueError()
 # Process transactions
-SPENT_INPUTS: typing.List[SpentInput] = []
+SPENT_INPUTS: list[SpentInput] = []
 WALLETS = {address: Wallet() for address in MY_WALLET_ADDRESSES}
 for transaction in TRANSACTIONS:
     if isinstance(transaction, InputTransaction):
