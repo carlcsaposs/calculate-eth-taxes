@@ -14,3 +14,17 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+# pylint: disable=missing-docstring
+import csv
+import pathlib
+import carlcsaposs.calculate_eth_taxes.main as main
+
+
+def test_write_form_8949_zero_rows(tmp_path: pathlib.Path):
+    file_path = tmp_path / "form-8949.csv"
+    main.Form8949File([]).write_to_file(file_path)
+    with open(file_path, "r", encoding="utf-8") as file:
+        reader = csv.DictReader(file)
+        assert reader.fieldnames == main.Form8949File.FIELDNAMES
+        # Check for zero rows
+        assert next(reader, False) is False
