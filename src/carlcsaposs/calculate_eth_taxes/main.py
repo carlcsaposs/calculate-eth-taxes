@@ -51,3 +51,5 @@ class Form8949File:
         with open(file_path, "w", encoding="utf-8") as file:
             writer = csv.DictWriter(file, self.FIELDNAMES)
             writer.writeheader()
+            for row in self.rows:
+                writer.writerow(dataclasses.asdict(row))

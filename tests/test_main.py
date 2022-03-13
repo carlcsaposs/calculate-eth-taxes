@@ -15,8 +15,11 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 # pylint: disable=missing-docstring
+import collections
 import csv
+import dataclasses
 import pathlib
+import typing
 import carlcsaposs.calculate_eth_taxes.main as main
 
 
@@ -28,3 +31,31 @@ def test_write_form_8949_zero_rows(tmp_path: pathlib.Path):
         assert reader.fieldnames == main.Form8949File.FIELDNAMES
         # Check for zero rows
         assert next(reader, False) is False
+
+
+def cast_string(value: str, type_: type) -> typing.Any:
+    if type_ is bool:
+        if value == "False":
+            return False
+        if value == "True":
+            return True
+        raise TypeError
+    return type_(value)
+
+
+def test_write_form_8949_multiple_rows(tmp_path):
+    rows = [
+        main.Form8949Row(1971, True, "0.00439 ETH", "01/01/1970", "01/02/1971", 0, 2),
+        main.Form8949Row(1971, False, "1.00439 ETH", "12/31/1970", "01/02/1971", 43, 0),
+    ]
+    file_path = tmp_path / "form-8949.csv"
+    main.Form8949File(rows).write_to_file(file_path)
+    rows = collections.deque(rows)
+    with open(file_path, "r", encoding="utf-8") as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            # Cast values in row
+            for field in dataclasses.fields(main.Form8949Row):
+                row[field.name] = cast_string(row[field.name], field.type)
+            assert main.Form8949Row(**row) == rows.popleft()
+    assert len(rows) == 0
