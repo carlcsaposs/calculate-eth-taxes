@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import collections
 import csv
 import dataclasses
+import datetime
 import pathlib
 import typing
 import carlcsaposs.calculate_eth_taxes.main as main
@@ -59,3 +60,17 @@ def test_write_form_8949_multiple_rows(tmp_path):
                 row[field.name] = cast_string(row[field.name], field.type)
             assert main.Form8949Row(**row) == rows.popleft()
     assert len(rows) == 0
+
+
+def test_convert_spent_eth_to_form_8949_row():
+    spent_eth = main.SpentETH(
+        datetime.datetime(1967, 2, 28, 23, 59, 59),
+        datetime.datetime(1968, 2, 29),
+        0.0004,
+        1,
+        0,
+    )
+    form_row = main.Form8949Row(
+        1968, True, "0.0004 ETH", "02/28/1967", "02/29/1968", 0, 1
+    )
+    assert spent_eth.convert_to_form_8949_row() == form_row

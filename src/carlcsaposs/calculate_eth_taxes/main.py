@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import csv
 import dataclasses
+import datetime
 import pathlib
 
 
@@ -53,3 +54,42 @@ class Form8949File:
             writer.writeheader()
             for row in self.rows:
                 writer.writerow(dataclasses.asdict(row))
+
+
+@dataclasses.dataclass
+class SpentETH:
+    """ETH that has been spent by taxpayer for USD (including as a fee)
+
+    Even if the ETH was spent for something other than USD or sent to
+    another person as ETH, it is viewed by the IRS as being spent by the
+    taxpayer for its market value in USD.
+    """
+
+    time_acquired: datetime.datetime
+    time_spent: datetime.datetime
+    amount_eth: float  # TODO: consider using Decimal
+    cost_usd_including_fees: int
+    proceeds_usd_excluding_fees: int
+
+    def _is_long_term(self) -> bool:
+        """Long term is one calendar year or more*
+
+        *Does not include date of acquistion
+        """
+        # Including date of acquistion, long term is more than one
+        # calendar year.
+        acquired = self.time_acquired.date()
+        spent = self.time_spent.date()
+        return acquired.replace(year=acquired.year + 1) < spent
+
+    def convert_to_form_8949_row(self) -> Form8949Row:
+        """Convert to Form 8949 row"""
+        return Form8949Row(
+            self.time_spent.year,
+            self._is_long_term(),
+            f"{self.amount_eth} ETH",
+            self.time_acquired.strftime("%m/%d/%Y"),
+            self.time_spent.strftime("%m/%d/%Y"),
+            self.proceeds_usd_excluding_fees,
+            self.cost_usd_including_fees,
+        )
