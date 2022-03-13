@@ -80,7 +80,15 @@ class SpentETH:
         # calendar year.
         acquired = self.time_acquired.date()
         spent = self.time_spent.date()
-        return acquired.replace(year=acquired.year + 1) < spent
+        try:
+            acquired = acquired.replace(year=acquired.year + 1)
+        except ValueError:
+            if acquired.day == 29 and acquired.month == 2:
+                # Leap day
+                acquired = acquired.replace(year=acquired.year + 1, day=28)
+            else:
+                raise
+        return acquired < spent
 
     def convert_to_form_8949_row(self) -> Form8949Row:
         """Convert to Form 8949 row"""
