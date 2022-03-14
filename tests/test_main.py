@@ -106,3 +106,22 @@ def test_convert_spent_eth_to_form_8949_row(
     spent_eth: main.SpentETH, form_row: main.Form8949Row
 ):
     assert spent_eth.convert_to_form_8949_row() == form_row
+
+
+def test_convert_acquired_eth_to_spent_eth():
+    acquired_eth = main.AcquiredETH(
+        datetime.datetime(2022, 3, 13, 20, 10, 59), 3.5831789, 2570.75
+    )
+    time_spent = datetime.datetime(2022, 3, 13, 20, 11, 2)
+    proceeds_usd_excluding_fees = 6039
+    spent_eth = main.SpentETH(
+        datetime.datetime(2022, 3, 13, 20, 10, 59),
+        time_spent,
+        3.5831789,
+        int(3.5831789 * 2570.75),
+        proceeds_usd_excluding_fees,
+    )
+    assert (
+        acquired_eth.convert_to_spent_eth(time_spent, proceeds_usd_excluding_fees)
+        == spent_eth
+    )

@@ -101,3 +101,29 @@ class SpentETH:
             self.proceeds_usd_excluding_fees,
             self.cost_usd_including_fees,
         )
+
+
+@dataclasses.dataclass
+class AcquiredETH:
+    """ETH that has been acquired by taxpayer for USD
+
+    Even if the ETH was acquired from something other than USD or sent
+    from another person as ETH, it is viewed by the IRS as being
+    acquired by the taxpayer for its market value in USD.
+    """
+
+    time_acquired: datetime.datetime
+    amount_eth: float  # TODO: consider using Decimal
+    cost_usd_per_eth_including_fees: float  # TODO: consider using Decimal
+
+    def convert_to_spent_eth(
+        self, time_spent: datetime.datetime, proceeds_usd_excluding_fees: int
+    ) -> SpentETH:
+        """Convert to 'SpentETH'"""
+        return SpentETH(
+            self.time_acquired,
+            time_spent,
+            self.amount_eth,
+            int(self.amount_eth * self.cost_usd_per_eth_including_fees),
+            proceeds_usd_excluding_fees,
+        )
