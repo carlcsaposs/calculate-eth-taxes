@@ -125,3 +125,28 @@ def test_convert_acquired_eth_to_spent_eth():
         acquired_eth.convert_to_spent_eth(time_spent, proceeds_usd_excluding_fees)
         == spent_eth
     )
+
+
+def test_acquired_eth_remove():
+    original_instance = main.AcquiredETH(
+        datetime.datetime(1970, 1, 1), 0.00004829, 3923421412324.23
+    )
+    new_instance = main.AcquiredETH(
+        datetime.datetime(1970, 1, 1),
+        0.00000239,  # TODO: consider using Decimal
+        3923421412324.23,
+    )
+    assert original_instance.remove_eth(0.00000239) == new_instance
+    # TODO: consider using Decimal
+    assert original_instance.amount_eth == pytest.approx(0.00004829 - 0.00000239)
+
+
+@pytest.mark.parametrize("amount", [0.0, 5.031])
+def test_acquired_eth_remove_invalid_amount(amount: float):
+    acquired_eth = main.AcquiredETH(datetime.datetime(2034, 11, 29), 5.03, 12.3)
+    with pytest.raises(ValueError) as exception_info:
+        acquired_eth.remove_eth(amount)
+    assert (
+        str(exception_info.value)
+        == f"expected value between 0.0 and 5.03, got {amount} instead"
+    )

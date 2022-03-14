@@ -127,3 +127,14 @@ class AcquiredETH:
             int(self.amount_eth * self.cost_usd_per_eth_including_fees),
             proceeds_usd_excluding_fees,
         )
+
+    def remove_eth(self, amount_eth: float) -> "AcquiredETH":
+        """Move ETH into new instance"""
+        if not 0 < amount_eth < self.amount_eth:
+            raise ValueError(
+                f"expected value between 0.0 and {self.amount_eth}, got {amount_eth} instead"
+            )
+        self.amount_eth -= amount_eth
+        return AcquiredETH(
+            self.time_acquired, amount_eth, self.cost_usd_per_eth_including_fees
+        )
