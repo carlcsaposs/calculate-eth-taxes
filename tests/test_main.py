@@ -25,6 +25,28 @@ import pytest
 import carlcsaposs.calculate_eth_taxes.main as main
 
 
+@pytest.mark.parametrize(
+    ["override_key", "override_value"], [("proceeds", -3), ("cost", -1)]
+)
+def test_form_8949_row_negative_integer(override_key: str, override_value: int):
+    row_dict = {
+        "tax_year": 103,
+        "is_long_term": False,
+        "description": "3.3 ETH",
+        "date_acquired": "12/12/103",
+        "date_sold": "12/21/103",
+        "proceeds": 0,
+        "cost": 0,
+    }
+    row_dict[override_key] = override_value
+    with pytest.raises(ValueError) as exception_info:
+        main.Form8949Row(**row_dict)
+    assert (
+        str(exception_info.value)
+        == f"expected '{override_key}' greater than or equal to zero, got {override_value} instead"
+    )
+
+
 def test_write_form_8949_zero_rows(tmp_path: pathlib.Path):
     file_path = tmp_path / "form-8949.csv"
     main.Form8949File([]).write_to_file(file_path)
@@ -64,6 +86,50 @@ def test_write_form_8949_multiple_rows(tmp_path):
 
 
 @pytest.mark.parametrize(
+    ["override_key", "override_value"],
+    [("cost_usd_including_fees", -3), ("proceeds_usd_excluding_fees", -1)],
+)
+def test_spent_eth_negative(override_key: str, override_value: int):
+    row_dict = {
+        "time_acquired": datetime.datetime(1940, 4, 3),
+        "time_spent": datetime.datetime(1941, 9, 29),
+        "amount_eth": 0.3,
+        "cost_usd_including_fees": 0,
+        "proceeds_usd_excluding_fees": 0,
+    }
+    row_dict[override_key] = override_value
+    with pytest.raises(ValueError) as exception_info:
+        main.SpentETH(**row_dict)
+    assert (
+        str(exception_info.value)
+        == f"expected '{override_key}' greater than or equal to zero, got {override_value} instead"
+    )
+
+
+def test_spent_eth_zero_amount():
+    with pytest.raises(ValueError) as exception_info:
+        main.SpentETH(
+            datetime.datetime(1940, 4, 3), datetime.datetime(1941, 9, 29), 0.0, 5, 3
+        )
+    assert (
+        str(exception_info.value)
+        == "expected 'amount_eth' greater than zero, got 0.0 instead"
+    )
+
+
+def test_spent_eth_spent_before_acquired():
+    with pytest.raises(ValueError) as exception_info:
+        main.SpentETH(
+            datetime.datetime(1940, 4, 3, 1, 1, 1),
+            datetime.datetime(1940, 4, 3, 1, 1, 1),
+            0.2,
+            5,
+            3,
+        )
+    assert str(exception_info.value) == "'time_spent' must be after 'time_acquired'"
+
+
+@pytest.mark.parametrize(
     ["spent_eth", "form_row"],
     [
         (
@@ -94,11 +160,11 @@ def test_write_form_8949_multiple_rows(tmp_path):
             main.SpentETH(
                 datetime.datetime(3004, 2, 29),
                 datetime.datetime(3005, 3, 1),
-                0.0,
+                0.1,
                 1,
                 0,
             ),
-            main.Form8949Row(3005, True, "0.0 ETH", "02/29/3004", "03/01/3005", 0, 1),
+            main.Form8949Row(3005, True, "0.1 ETH", "02/29/3004", "03/01/3005", 0, 1),
         ),
     ],
 )
@@ -106,6 +172,25 @@ def test_convert_spent_eth_to_form_8949_row(
     spent_eth: main.SpentETH, form_row: main.Form8949Row
 ):
     assert spent_eth.convert_to_form_8949_row() == form_row
+
+
+@pytest.mark.parametrize(
+    ["override_key", "override_value"],
+    [("amount_eth", 0.0), ("cost_usd_per_eth_including_fees", 0.0)],
+)
+def test_acquired_eth_non_positive(override_key: str, override_value: float):
+    row_dict = {
+        "time_acquired": datetime.datetime(1940, 4, 3),
+        "amount_eth": 0.3,
+        "cost_usd_per_eth_including_fees": 1200.0,
+    }
+    row_dict[override_key] = override_value
+    with pytest.raises(ValueError) as exception_info:
+        main.AcquiredETH(**row_dict)
+    assert (
+        str(exception_info.value)
+        == f"expected '{override_key}' greater than zero, got {override_value} instead"
+    )
 
 
 def test_convert_acquired_eth_to_spent_eth():

@@ -22,7 +22,7 @@ import datetime
 import pathlib
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Form8949Row:
     """Row in Form 8949
 
@@ -37,6 +37,14 @@ class Form8949Row:
     date_sold: str
     proceeds: int
     cost: int
+
+    def __post_init__(self):
+        for attribute in ["proceeds", "cost"]:
+            value = getattr(self, attribute)
+            if value < 0:
+                raise ValueError(
+                    f"expected '{attribute}' greater than or equal to zero, got {value} instead"
+                )
 
 
 class Form8949File:
@@ -70,6 +78,20 @@ class SpentETH:
     amount_eth: float  # TODO: consider using Decimal
     cost_usd_including_fees: int
     proceeds_usd_excluding_fees: int
+
+    def __post_init__(self):
+        for attribute in ["cost_usd_including_fees", "proceeds_usd_excluding_fees"]:
+            value = getattr(self, attribute)
+            if value < 0:
+                raise ValueError(
+                    f"expected '{attribute}' greater than or equal to zero, got {value} instead"
+                )
+        if self.amount_eth <= 0:
+            raise ValueError(
+                f"expected 'amount_eth' greater than zero, got {self.amount_eth} instead"
+            )
+        if self.time_spent <= self.time_acquired:
+            raise ValueError("'time_spent' must be after 'time_acquired'")
 
     def _is_long_term(self) -> bool:
         """Long term is one calendar year or more*
@@ -115,6 +137,14 @@ class AcquiredETH:
     time_acquired: datetime.datetime
     amount_eth: float  # TODO: consider using Decimal
     cost_usd_per_eth_including_fees: float  # TODO: consider using Decimal
+
+    def __post_init__(self):
+        for attribute in ["amount_eth", "cost_usd_per_eth_including_fees"]:
+            value = getattr(self, attribute)
+            if value <= 0:
+                raise ValueError(
+                    f"expected '{attribute}' greater than zero, got {value} instead"
+                )
 
     def convert_to_spent_eth(
         self, time_spent: datetime.datetime, proceeds_usd_excluding_fees: int
