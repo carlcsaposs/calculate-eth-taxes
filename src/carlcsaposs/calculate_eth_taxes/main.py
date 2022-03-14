@@ -19,7 +19,24 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import csv
 import dataclasses
 import datetime
+import enum
 import pathlib
+import typing
+
+
+class NumberDomain(enum.Enum):
+    """Valid domain for a float or integer"""
+
+    POSITIVE = (lambda x: x > 0, "greater than zero")
+    NON_NEGATIVE = (lambda x: x >= 0, "greater than or equal to zero")
+
+
+def validate_number_in_domain(
+    key: str, number: typing.Union[int, float], domain: NumberDomain
+):
+    """Raise ValueError if number is not within domain"""
+    if not domain.value[0](number):
+        raise ValueError(f"expected '{key}' {domain.value[1]}, got {number} instead")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -40,11 +57,9 @@ class Form8949Row:
 
     def __post_init__(self):
         for attribute in ["proceeds", "cost"]:
-            value = getattr(self, attribute)
-            if value < 0:
-                raise ValueError(
-                    f"expected '{attribute}' greater than or equal to zero, got {value} instead"
-                )
+            validate_number_in_domain(
+                attribute, getattr(self, attribute), NumberDomain.NON_NEGATIVE
+            )
 
 
 class Form8949File:
@@ -81,15 +96,10 @@ class SpentETH:
 
     def __post_init__(self):
         for attribute in ["cost_usd_including_fees", "proceeds_usd_excluding_fees"]:
-            value = getattr(self, attribute)
-            if value < 0:
-                raise ValueError(
-                    f"expected '{attribute}' greater than or equal to zero, got {value} instead"
-                )
-        if self.amount_eth <= 0:
-            raise ValueError(
-                f"expected 'amount_eth' greater than zero, got {self.amount_eth} instead"
+            validate_number_in_domain(
+                attribute, getattr(self, attribute), NumberDomain.NON_NEGATIVE
             )
+        validate_number_in_domain("amount_eth", self.amount_eth, NumberDomain.POSITIVE)
         if self.time_spent <= self.time_acquired:
             raise ValueError("'time_spent' must be after 'time_acquired'")
 
@@ -140,11 +150,9 @@ class AcquiredETH:
 
     def __post_init__(self):
         for attribute in ["amount_eth", "cost_usd_per_eth_including_fees"]:
-            value = getattr(self, attribute)
-            if value <= 0:
-                raise ValueError(
-                    f"expected '{attribute}' greater than zero, got {value} instead"
-                )
+            validate_number_in_domain(
+                attribute, getattr(self, attribute), NumberDomain.POSITIVE
+            )
 
     def convert_to_spent_eth(
         self, time_spent: datetime.datetime, proceeds_usd_excluding_fees: int
