@@ -26,7 +26,7 @@ import carlcsaposs.calculate_eth_taxes.main as main
 
 
 @pytest.mark.parametrize(
-    ["override_key", "override_value"], [("proceeds", -3), ("cost", -1)]
+    ["override_key", "override_value"], [("proceeds_usd", -3), ("cost_usd", -1)]
 )
 def test_form_8949_row_negative_integer(override_key: str, override_value: int):
     row_dict = {
@@ -35,8 +35,8 @@ def test_form_8949_row_negative_integer(override_key: str, override_value: int):
         "description": "3.3 ETH",
         "date_acquired": "12/12/103",
         "date_sold": "12/21/103",
-        "proceeds": 0,
-        "cost": 0,
+        "proceeds_usd": 0,
+        "cost_usd": 0,
     }
     row_dict[override_key] = override_value
     with pytest.raises(ValueError) as exception_info:
@@ -93,7 +93,7 @@ def test_spent_eth_negative(override_key: str, override_value: int):
     row_dict = {
         "time_acquired": datetime.datetime(1940, 4, 3),
         "time_spent": datetime.datetime(1941, 9, 29),
-        "amount_eth": 0.3,
+        "amount_wei": 300000000000000000,
         "cost_usd_including_fees": 0,
         "proceeds_usd_excluding_fees": 0,
     }
@@ -109,11 +109,11 @@ def test_spent_eth_negative(override_key: str, override_value: int):
 def test_spent_eth_zero_amount():
     with pytest.raises(ValueError) as exception_info:
         main.SpentETH(
-            datetime.datetime(1940, 4, 3), datetime.datetime(1941, 9, 29), 0.0, 5, 3
+            datetime.datetime(1940, 4, 3), datetime.datetime(1941, 9, 29), 0, 5, 3
         )
     assert (
         str(exception_info.value)
-        == "expected 'amount_eth' greater than zero, got 0.0 instead"
+        == "expected 'amount_wei' greater than zero, got 0 instead"
     )
 
 
@@ -122,7 +122,7 @@ def test_spent_eth_spent_before_acquired():
         main.SpentETH(
             datetime.datetime(1940, 4, 3, 1, 1, 1),
             datetime.datetime(1940, 4, 3, 1, 1, 1),
-            0.2,
+            200000000000000000,
             5,
             3,
         )
@@ -136,35 +136,43 @@ def test_spent_eth_spent_before_acquired():
             main.SpentETH(
                 datetime.datetime(1967, 2, 28, 23, 59, 59),
                 datetime.datetime(1968, 2, 29),
-                0.0004,
+                400000000000000,
                 1,
                 0,
             ),
             main.Form8949Row(
-                1968, True, "0.0004 ETH", "02/28/1967", "02/29/1968", 0, 1
+                1968, True, "0.000400000000000000 ETH", "02/28/1967", "02/29/1968", 0, 1
             ),
         ),
         (
             main.SpentETH(
                 datetime.datetime(2004, 2, 29),
                 datetime.datetime(2005, 2, 28, 23, 59, 59),
-                34.0,
+                34000000000000000000,
                 5000,
                 4930,
             ),
             main.Form8949Row(
-                2005, False, "34.0 ETH", "02/29/2004", "02/28/2005", 4930, 5000
+                2005,
+                False,
+                "34.000000000000000000 ETH",
+                "02/29/2004",
+                "02/28/2005",
+                4930,
+                5000,
             ),
         ),
         (
             main.SpentETH(
                 datetime.datetime(3004, 2, 29),
                 datetime.datetime(3005, 3, 1),
-                0.1,
+                100000000000000000,
                 1,
                 0,
             ),
-            main.Form8949Row(3005, True, "0.1 ETH", "02/29/3004", "03/01/3005", 0, 1),
+            main.Form8949Row(
+                3005, True, "0.100000000000000000 ETH", "02/29/3004", "03/01/3005", 0, 1
+            ),
         ),
     ],
 )
@@ -176,13 +184,13 @@ def test_convert_spent_eth_to_form_8949_row(
 
 @pytest.mark.parametrize(
     ["override_key", "override_value"],
-    [("amount_eth", 0.0), ("cost_usd_per_eth_including_fees", 0.0)],
+    [("amount_wei", 0), ("cost_us_cents_per_eth_including_fees", 0)],
 )
-def test_acquired_eth_non_positive(override_key: str, override_value: float):
+def test_acquired_eth_non_positive(override_key: str, override_value: int):
     row_dict = {
         "time_acquired": datetime.datetime(1940, 4, 3),
-        "amount_eth": 0.3,
-        "cost_usd_per_eth_including_fees": 1200.0,
+        "amount_wei": 1,
+        "cost_us_cents_per_eth_including_fees": 120000,
     }
     row_dict[override_key] = override_value
     with pytest.raises(ValueError) as exception_info:
@@ -195,14 +203,14 @@ def test_acquired_eth_non_positive(override_key: str, override_value: float):
 
 def test_convert_acquired_eth_to_spent_eth():
     acquired_eth = main.AcquiredETH(
-        datetime.datetime(2022, 3, 13, 20, 10, 59), 3.5831789, 2570.75
+        datetime.datetime(2022, 3, 13, 20, 10, 59), 3583178900000000000, 257075
     )
     time_spent = datetime.datetime(2022, 3, 13, 20, 11, 2)
     proceeds_usd_excluding_fees = 6039
     spent_eth = main.SpentETH(
         datetime.datetime(2022, 3, 13, 20, 10, 59),
         time_spent,
-        3.5831789,
+        3583178900000000000,
         int(3.5831789 * 2570.75),
         proceeds_usd_excluding_fees,
     )
@@ -214,24 +222,25 @@ def test_convert_acquired_eth_to_spent_eth():
 
 def test_acquired_eth_remove():
     original_instance = main.AcquiredETH(
-        datetime.datetime(1970, 1, 1), 0.00004829, 3923421412324.23
+        datetime.datetime(1970, 1, 1), 48290000000000, 392342141232423
     )
     new_instance = main.AcquiredETH(
         datetime.datetime(1970, 1, 1),
-        0.00000239,  # TODO: consider using Decimal
-        3923421412324.23,
+        2390000000000,
+        392342141232423,
     )
-    assert original_instance.remove_eth(0.00000239) == new_instance
-    # TODO: consider using Decimal
-    assert original_instance.amount_eth == pytest.approx(0.00004829 - 0.00000239)
+    assert original_instance.remove_wei(2390000000000) == new_instance
+    assert original_instance.amount_wei == 48290000000000 - 2390000000000
 
 
-@pytest.mark.parametrize("amount", [0.0, 5.031])
-def test_acquired_eth_remove_invalid_amount(amount: float):
-    acquired_eth = main.AcquiredETH(datetime.datetime(2034, 11, 29), 5.03, 12.3)
+@pytest.mark.parametrize("amount", [0, 5030000000000000001])
+def test_acquired_eth_remove_invalid_amount(amount: int):
+    acquired_eth = main.AcquiredETH(
+        datetime.datetime(2034, 11, 29), 5030000000000000000, 1230
+    )
     with pytest.raises(ValueError) as exception_info:
-        acquired_eth.remove_eth(amount)
+        acquired_eth.remove_wei(amount)
     assert (
         str(exception_info.value)
-        == f"expected value between 0.0 and 5.03, got {amount} instead"
+        == f"expected value between 0 and 5030000000000000000, got {amount} instead"
     )

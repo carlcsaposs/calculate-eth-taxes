@@ -19,21 +19,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import csv
 import dataclasses
 import datetime
+import decimal
 import enum
 import pathlib
-import typing
 
 
 class NumberDomain(enum.Enum):
-    """Valid domain for a float or integer"""
+    """Valid domain for an integer"""
 
     POSITIVE = (lambda x: x > 0, "greater than zero")
     NON_NEGATIVE = (lambda x: x >= 0, "greater than or equal to zero")
 
 
-def validate_number_in_domain(
-    key: str, number: typing.Union[int, float], domain: NumberDomain
-):
+def validate_number_in_domain(key: str, number: int, domain: NumberDomain):
     """Raise ValueError if number is not within domain"""
     if not domain.value[0](number):
         raise ValueError(f"expected '{key}' {domain.value[1]}, got {number} instead")
@@ -52,11 +50,11 @@ class Form8949Row:
     description: str
     date_acquired: str
     date_sold: str
-    proceeds: int
-    cost: int
+    proceeds_usd: int
+    cost_usd: int
 
     def __post_init__(self):
-        for attribute in ["proceeds", "cost"]:
+        for attribute in ["proceeds_usd", "cost_usd"]:
             validate_number_in_domain(
                 attribute, getattr(self, attribute), NumberDomain.NON_NEGATIVE
             )
@@ -90,7 +88,7 @@ class SpentETH:
 
     time_acquired: datetime.datetime
     time_spent: datetime.datetime
-    amount_eth: float  # TODO: consider using Decimal
+    amount_wei: int  # Wei: 10^-18 ETH
     cost_usd_including_fees: int
     proceeds_usd_excluding_fees: int
 
@@ -99,7 +97,7 @@ class SpentETH:
             validate_number_in_domain(
                 attribute, getattr(self, attribute), NumberDomain.NON_NEGATIVE
             )
-        validate_number_in_domain("amount_eth", self.amount_eth, NumberDomain.POSITIVE)
+        validate_number_in_domain("amount_wei", self.amount_wei, NumberDomain.POSITIVE)
         if self.time_spent <= self.time_acquired:
             raise ValueError("'time_spent' must be after 'time_acquired'")
 
@@ -124,10 +122,15 @@ class SpentETH:
 
     def convert_to_form_8949_row(self) -> Form8949Row:
         """Convert to Form 8949 row"""
+        amount_eth: decimal.Decimal = self.amount_wei / decimal.Decimal(10**18)
+        # Round to eighteen decimal places
+        amount_eth = amount_eth.quantize(
+            decimal.Decimal(10) ** -18, rounding=decimal.ROUND_HALF_UP
+        )
         return Form8949Row(
             self.time_spent.year,
             self._is_long_term(),
-            f"{self.amount_eth} ETH",
+            f"{amount_eth} ETH",
             self.time_acquired.strftime("%m/%d/%Y"),
             self.time_spent.strftime("%m/%d/%Y"),
             self.proceeds_usd_excluding_fees,
@@ -145,11 +148,11 @@ class AcquiredETH:
     """
 
     time_acquired: datetime.datetime
-    amount_eth: float  # TODO: consider using Decimal
-    cost_usd_per_eth_including_fees: float  # TODO: consider using Decimal
+    amount_wei: int  # Wei: 10^-18 ETH
+    cost_us_cents_per_eth_including_fees: int
 
     def __post_init__(self):
-        for attribute in ["amount_eth", "cost_usd_per_eth_including_fees"]:
+        for attribute in ["amount_wei", "cost_us_cents_per_eth_including_fees"]:
             validate_number_in_domain(
                 attribute, getattr(self, attribute), NumberDomain.POSITIVE
             )
@@ -161,18 +164,21 @@ class AcquiredETH:
         return SpentETH(
             self.time_acquired,
             time_spent,
-            self.amount_eth,
-            int(self.amount_eth * self.cost_usd_per_eth_including_fees),
+            self.amount_wei,
+            (
+                (self.amount_wei * self.cost_us_cents_per_eth_including_fees)
+                // (100 * 10**18)
+            ),  # 100 is cents to dollars, 10**18 is Wei to ETH
             proceeds_usd_excluding_fees,
         )
 
-    def remove_eth(self, amount_eth: float) -> "AcquiredETH":
+    def remove_wei(self, amount_wei: int) -> "AcquiredETH":
         """Move ETH into new instance"""
-        if not 0 < amount_eth < self.amount_eth:
+        if not 0 < amount_wei < self.amount_wei:
             raise ValueError(
-                f"expected value between 0.0 and {self.amount_eth}, got {amount_eth} instead"
+                f"expected value between 0 and {self.amount_wei}, got {amount_wei} instead"
             )
-        self.amount_eth -= amount_eth
+        self.amount_wei -= amount_wei
         return AcquiredETH(
-            self.time_acquired, amount_eth, self.cost_usd_per_eth_including_fees
+            self.time_acquired, amount_wei, self.cost_us_cents_per_eth_including_fees
         )
