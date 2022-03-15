@@ -30,11 +30,10 @@ class NumberDomain(enum.Enum):
     POSITIVE = (lambda x: x > 0, "greater than zero")
     NON_NEGATIVE = (lambda x: x >= 0, "greater than or equal to zero")
 
-
-def validate_number_in_domain(key: str, number: int, domain: NumberDomain):
-    """Raise ValueError if number is not within domain"""
-    if not domain.value[0](number):
-        raise ValueError(f"expected '{key}' {domain.value[1]}, got {number} instead")
+    def validate_number(self, key: str, number: int):
+        """Raise ValueError if number is not within domain"""
+        if not self.value[0](number):
+            raise ValueError(f"expected '{key}' {self.value[1]}, got {number} instead")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -55,8 +54,8 @@ class Form8949Row:
 
     def __post_init__(self):
         for attribute in ["proceeds_usd", "cost_usd"]:
-            validate_number_in_domain(
-                attribute, getattr(self, attribute), NumberDomain.NON_NEGATIVE
+            NumberDomain.NON_NEGATIVE.validate_number(
+                attribute, getattr(self, attribute)
             )
 
 
@@ -94,10 +93,10 @@ class SpentETH:
 
     def __post_init__(self):
         for attribute in ["cost_usd_including_fees", "proceeds_usd_excluding_fees"]:
-            validate_number_in_domain(
-                attribute, getattr(self, attribute), NumberDomain.NON_NEGATIVE
+            NumberDomain.NON_NEGATIVE.validate_number(
+                attribute, getattr(self, attribute)
             )
-        validate_number_in_domain("amount_wei", self.amount_wei, NumberDomain.POSITIVE)
+        NumberDomain.POSITIVE.validate_number("amount_wei", self.amount_wei)
         if self.time_spent <= self.time_acquired:
             raise ValueError("'time_spent' must be after 'time_acquired'")
 
@@ -153,9 +152,7 @@ class AcquiredETH:
 
     def __post_init__(self):
         for attribute in ["amount_wei", "cost_us_cents_per_eth_including_fees"]:
-            validate_number_in_domain(
-                attribute, getattr(self, attribute), NumberDomain.POSITIVE
-            )
+            NumberDomain.POSITIVE.validate_number(attribute, getattr(self, attribute))
 
     def convert_to_spent_eth(
         self, time_spent: datetime.datetime, proceeds_usd_excluding_fees: int
