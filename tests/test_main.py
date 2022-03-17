@@ -244,3 +244,11 @@ def test_acquired_eth_remove_invalid_amount(amount: int):
         str(exception_info.value)
         == f"expected value between 0 and 5030000000000000000, got {amount} instead"
     )
+
+
+def test_convert_acquire_transaction_to_acquired_eth():
+    assert main.AcquireTransaction(
+        datetime.datetime(2021, 3, 17), 500, 10340
+    ).convert_to_acquired_eth() == main.AcquiredETH(
+        datetime.datetime(2021, 3, 17), 500, 10340
+    )

@@ -179,3 +179,31 @@ class AcquiredETH:
         return AcquiredETH(
             self.time_acquired, amount_wei, self.cost_us_cents_per_eth_including_fees
         )
+
+
+@dataclasses.dataclass
+class Transaction:
+    """Exchange ETH for USD or vice versa"""
+
+    time: datetime.datetime
+    amount_wei: int  # Wei: 10^-18 ETH
+
+
+@dataclasses.dataclass
+class AcquireTransaction(Transaction):
+    """USD to ETH"""
+
+    cost_us_cents_per_eth_including_fees: int
+
+    def convert_to_acquired_eth(self) -> AcquiredETH:
+        """Create 'AcquiredETH' instance for this transaction"""
+        return AcquiredETH(
+            self.time, self.amount_wei, self.cost_us_cents_per_eth_including_fees
+        )
+
+
+@dataclasses.dataclass
+class SpendTransaction(Transaction):
+    """ETH to USD (including as fee)"""
+
+    proceeds_us_cents_per_eth_excluding_fees: int
