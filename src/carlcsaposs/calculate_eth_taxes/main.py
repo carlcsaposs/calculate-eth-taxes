@@ -157,3 +157,10 @@ class SpendTransaction(Transaction):
     """ETH to USD (including as fee)"""
 
     proceeds_us_cents_per_eth_excluding_fees: int
+
+
+def sort_transactions_in_chronologial_order(
+    transactions: list[Transaction],
+) -> list[Transaction]:
+    """Sort transactions from oldest to newest"""
+    return sorted(transactions, key=lambda transaction: transaction.time)

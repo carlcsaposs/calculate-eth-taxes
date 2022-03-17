@@ -190,3 +190,64 @@ def test_convert_acquire_transaction_to_acquired_eth():
     ).convert_to_acquired_eth() == main.AcquiredETH(
         datetime.datetime(2021, 3, 17), 500, 10340
     )
+
+
+def test_sort_transactions():
+    transactions = [
+        main.SpendTransaction(
+            datetime.datetime(2021, 3, 17, 4, 2, 3),
+            3583178900000000000,
+            300000,
+        ),
+        main.AcquireTransaction(
+            datetime.datetime(2021, 3, 17, 4, 2, 4),
+            53583178900000000000,
+            400000,
+        ),
+        main.SpendTransaction(
+            datetime.datetime(2021, 3, 17, 4, 3, 1),
+            3583178900000000000,
+            300000,
+        ),
+    ]
+    assert (
+        main.sort_transactions_in_chronologial_order(
+            [transactions[2], transactions[0], transactions[1]]
+        )
+        == transactions
+    )
+    assert (
+        main.sort_transactions_in_chronologial_order(
+            [transactions[0], transactions[1], transactions[2]]
+        )
+        == transactions
+    )
+    assert (
+        main.sort_transactions_in_chronologial_order(
+            [transactions[1], transactions[0], transactions[2]]
+        )
+        == transactions
+    )
+
+
+def test_sort_transactions_does_not_mutate_argument():
+    unsorted_transactions = [
+        main.SpendTransaction(
+            datetime.datetime(2021, 3, 17, 4, 3, 1),
+            3583178900000000000,
+            300000,
+        ),
+        main.SpendTransaction(
+            datetime.datetime(2021, 3, 17, 4, 2, 3),
+            3583178900000000000,
+            300000,
+        ),
+        main.AcquireTransaction(
+            datetime.datetime(2021, 3, 17, 4, 2, 4),
+            53583178900000000000,
+            400000,
+        ),
+    ]
+    assert unsorted_transactions != main.sort_transactions_in_chronologial_order(
+        unsorted_transactions
+    )
