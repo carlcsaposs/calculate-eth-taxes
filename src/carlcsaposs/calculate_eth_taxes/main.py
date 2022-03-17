@@ -105,7 +105,9 @@ class AcquiredETH:
             )
 
     def convert_to_spent_eth(
-        self, time_spent: datetime.datetime, proceeds_usd_excluding_fees: int
+        self,
+        time_spent: datetime.datetime,
+        proceeds_us_cents_per_eth_excluding_fees: int,
     ) -> SpentETH:
         """Convert to 'SpentETH'"""
         return SpentETH(
@@ -116,7 +118,10 @@ class AcquiredETH:
                 (self.amount_wei * self.cost_us_cents_per_eth_including_fees)
                 // (100 * 10**18)
             ),  # 100 is cents to dollars, 10**18 is Wei to ETH
-            proceeds_usd_excluding_fees,
+            (
+                (self.amount_wei * proceeds_us_cents_per_eth_excluding_fees)
+                // (100 * 10**18)
+            ),  # 100 is cents to dollars, 10**18 is Wei to ETH
         )
 
     def remove_wei(self, amount_wei: int) -> "AcquiredETH":

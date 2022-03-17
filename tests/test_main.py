@@ -144,18 +144,14 @@ def test_convert_acquired_eth_to_spent_eth():
         datetime.datetime(2022, 3, 13, 20, 10, 59), 3583178900000000000, 257075
     )
     time_spent = datetime.datetime(2022, 3, 13, 20, 11, 2)
-    proceeds_usd_excluding_fees = 6039
     spent_eth = main.SpentETH(
         datetime.datetime(2022, 3, 13, 20, 10, 59),
         time_spent,
         3583178900000000000,
         int(3.5831789 * 2570.75),
-        proceeds_usd_excluding_fees,
+        int(3.5831789 * 2568.32),
     )
-    assert (
-        acquired_eth.convert_to_spent_eth(time_spent, proceeds_usd_excluding_fees)
-        == spent_eth
-    )
+    assert acquired_eth.convert_to_spent_eth(time_spent, 256832) == spent_eth
 
 
 def test_acquired_eth_remove():
