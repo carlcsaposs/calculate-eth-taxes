@@ -25,6 +25,22 @@ import pytest
 import carlcsaposs.calculate_eth_taxes.main as main
 
 
+def test_number_domain_validate_number():
+    with pytest.raises(ValueError) as exception_info:
+        main.NumberDomain.POSITIVE.validate_number("key", 0)
+    assert (
+        str(exception_info.value) == "expected 'key' greater than zero, got 0 instead"
+    )
+    assert main.NumberDomain.POSITIVE.validate_number("key", 1) is None
+    with pytest.raises(ValueError) as exception_info:
+        main.NumberDomain.NON_NEGATIVE.validate_number("key", -2)
+    assert (
+        str(exception_info.value)
+        == "expected 'key' greater than or equal to zero, got -2 instead"
+    )
+    assert main.NumberDomain.NON_NEGATIVE.validate_number("key", 0) is None
+
+
 @pytest.mark.parametrize(
     ["override_key", "override_value"], [("proceeds_usd", -3), ("cost_usd", -1)]
 )
