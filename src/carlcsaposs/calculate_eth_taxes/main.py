@@ -16,64 +16,12 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import csv
 import dataclasses
 import datetime
 import decimal
-import enum
-import pathlib
 
-
-class NumberDomain(enum.Enum):
-    """Valid domain for an integer"""
-
-    POSITIVE = (lambda x: x > 0, "greater than zero")
-    NON_NEGATIVE = (lambda x: x >= 0, "greater than or equal to zero")
-
-    def validate_number(self, key: str, number: int):
-        """Raise ValueError if number is not within domain"""
-        if not self.value[0](number):
-            raise ValueError(f"expected '{key}' {self.value[1]}, got {number} instead")
-
-
-@dataclasses.dataclass(frozen=True)
-class Form8949Row:
-    """Row in Form 8949
-
-    Represents ETH that has realized a capital gain in USD (includes
-    ETH spent as fee)
-    """
-
-    tax_year: int
-    is_long_term: bool
-    description: str
-    date_acquired: str
-    date_sold: str
-    proceeds_usd: int
-    cost_usd: int
-
-    def __post_init__(self):
-        for attribute in ["proceeds_usd", "cost_usd"]:
-            NumberDomain.NON_NEGATIVE.validate_number(
-                attribute, getattr(self, attribute)
-            )
-
-
-class Form8949File:
-    """CSV file with format of IRS Form 8949"""
-
-    FIELDNAMES = [field.name for field in dataclasses.fields(Form8949Row)]
-
-    def __init__(self, rows: list[Form8949Row]):
-        self.rows = rows
-
-    def write_to_file(self, file_path: pathlib.Path) -> None:
-        """Save instance to CSV file"""
-        with open(file_path, "w", encoding="utf-8") as file:
-            writer = csv.DictWriter(file, self.FIELDNAMES)
-            writer.writeheader()
-            for row in self.rows:
-                writer.writerow(dataclasses.asdict(row))
+from . import file_writer
+from . import utils
 
 
 @dataclasses.dataclass
@@ -93,10 +41,10 @@ class SpentETH:
 
     def __post_init__(self):
         for attribute in ["cost_usd_including_fees", "proceeds_usd_excluding_fees"]:
-            NumberDomain.NON_NEGATIVE.validate_number(
+            utils.NumberDomain.NON_NEGATIVE.validate_number(
                 attribute, getattr(self, attribute)
             )
-        NumberDomain.POSITIVE.validate_number("amount_wei", self.amount_wei)
+        utils.NumberDomain.POSITIVE.validate_number("amount_wei", self.amount_wei)
         if self.time_spent <= self.time_acquired:
             raise ValueError("'time_spent' must be after 'time_acquired'")
 
@@ -119,14 +67,14 @@ class SpentETH:
                 raise
         return acquired < spent
 
-    def convert_to_form_8949_row(self) -> Form8949Row:
+    def convert_to_form_8949_row(self) -> file_writer.Form8949Row:
         """Convert to Form 8949 row"""
         amount_eth: decimal.Decimal = self.amount_wei / decimal.Decimal(10**18)
         # Round to eighteen decimal places
         amount_eth = amount_eth.quantize(
             decimal.Decimal(10) ** -18, rounding=decimal.ROUND_HALF_UP
         )
-        return Form8949Row(
+        return file_writer.Form8949Row(
             self.time_spent.year,
             self._is_long_term(),
             f"{amount_eth} ETH",
@@ -152,7 +100,9 @@ class AcquiredETH:
 
     def __post_init__(self):
         for attribute in ["amount_wei", "cost_us_cents_per_eth_including_fees"]:
-            NumberDomain.POSITIVE.validate_number(attribute, getattr(self, attribute))
+            utils.NumberDomain.POSITIVE.validate_number(
+                attribute, getattr(self, attribute)
+            )
 
     def convert_to_spent_eth(
         self, time_spent: datetime.datetime, proceeds_usd_excluding_fees: int

@@ -15,90 +15,12 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 # pylint: disable=missing-docstring
-import collections
-import csv
-import dataclasses
 import datetime
-import pathlib
-import typing
+
 import pytest
+
+import carlcsaposs.calculate_eth_taxes.file_writer as file_writer
 import carlcsaposs.calculate_eth_taxes.main as main
-
-
-def test_number_domain_validate_number():
-    with pytest.raises(ValueError) as exception_info:
-        main.NumberDomain.POSITIVE.validate_number("key", 0)
-    assert (
-        str(exception_info.value) == "expected 'key' greater than zero, got 0 instead"
-    )
-    assert main.NumberDomain.POSITIVE.validate_number("key", 1) is None
-    with pytest.raises(ValueError) as exception_info:
-        main.NumberDomain.NON_NEGATIVE.validate_number("key", -2)
-    assert (
-        str(exception_info.value)
-        == "expected 'key' greater than or equal to zero, got -2 instead"
-    )
-    assert main.NumberDomain.NON_NEGATIVE.validate_number("key", 0) is None
-
-
-@pytest.mark.parametrize(
-    ["override_key", "override_value"], [("proceeds_usd", -3), ("cost_usd", -1)]
-)
-def test_form_8949_row_negative_integer(override_key: str, override_value: int):
-    row_dict = {
-        "tax_year": 103,
-        "is_long_term": False,
-        "description": "3.3 ETH",
-        "date_acquired": "12/12/103",
-        "date_sold": "12/21/103",
-        "proceeds_usd": 0,
-        "cost_usd": 0,
-    }
-    row_dict[override_key] = override_value
-    with pytest.raises(ValueError) as exception_info:
-        main.Form8949Row(**row_dict)
-    assert (
-        str(exception_info.value)
-        == f"expected '{override_key}' greater than or equal to zero, got {override_value} instead"
-    )
-
-
-def test_write_form_8949_zero_rows(tmp_path: pathlib.Path):
-    file_path = tmp_path / "form-8949.csv"
-    main.Form8949File([]).write_to_file(file_path)
-    with open(file_path, "r", encoding="utf-8") as file:
-        reader = csv.DictReader(file)
-        assert reader.fieldnames == main.Form8949File.FIELDNAMES
-        # Check for zero rows
-        assert next(reader, False) is False
-
-
-def cast_string(value: str, type_: type) -> typing.Any:
-    if type_ is bool:
-        if value == "False":
-            return False
-        if value == "True":
-            return True
-        raise TypeError
-    return type_(value)
-
-
-def test_write_form_8949_multiple_rows(tmp_path):
-    rows = [
-        main.Form8949Row(1971, True, "0.00439 ETH", "01/01/1970", "01/02/1971", 0, 2),
-        main.Form8949Row(1971, False, "1.00439 ETH", "12/31/1970", "01/02/1971", 43, 0),
-    ]
-    file_path = tmp_path / "form-8949.csv"
-    main.Form8949File(rows).write_to_file(file_path)
-    rows = collections.deque(rows)
-    with open(file_path, "r", encoding="utf-8") as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            # Cast values in row
-            for field in dataclasses.fields(main.Form8949Row):
-                row[field.name] = cast_string(row[field.name], field.type)
-            assert main.Form8949Row(**row) == rows.popleft()
-    assert len(rows) == 0
 
 
 @pytest.mark.parametrize(
@@ -156,7 +78,7 @@ def test_spent_eth_spent_before_acquired():
                 1,
                 0,
             ),
-            main.Form8949Row(
+            file_writer.Form8949Row(
                 1968, True, "0.000400000000000000 ETH", "02/28/1967", "02/29/1968", 0, 1
             ),
         ),
@@ -168,7 +90,7 @@ def test_spent_eth_spent_before_acquired():
                 5000,
                 4930,
             ),
-            main.Form8949Row(
+            file_writer.Form8949Row(
                 2005,
                 False,
                 "34.000000000000000000 ETH",
@@ -186,14 +108,14 @@ def test_spent_eth_spent_before_acquired():
                 1,
                 0,
             ),
-            main.Form8949Row(
+            file_writer.Form8949Row(
                 3005, True, "0.100000000000000000 ETH", "02/29/3004", "03/01/3005", 0, 1
             ),
         ),
     ],
 )
 def test_convert_spent_eth_to_form_8949_row(
-    spent_eth: main.SpentETH, form_row: main.Form8949Row
+    spent_eth: main.SpentETH, form_row: file_writer.Form8949Row
 ):
     assert spent_eth.convert_to_form_8949_row() == form_row
 
