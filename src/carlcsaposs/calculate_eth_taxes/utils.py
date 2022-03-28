@@ -25,7 +25,7 @@ class NumberDomain(enum.Enum):
     POSITIVE = (lambda x: x > 0, "greater than zero")
     NON_NEGATIVE = (lambda x: x >= 0, "greater than or equal to zero")
 
-    def validate_number(self, key: str, number: int):
+    def validate_number(self, key: str, number: int) -> None:
         """Raise ValueError if number is not within domain"""
         if not self.value[0](number):
             raise ValueError(f"expected '{key}' {self.value[1]}, got {number} instead")
