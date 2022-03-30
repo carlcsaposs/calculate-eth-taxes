@@ -23,7 +23,7 @@ from . import currency
 
 
 @dataclasses.dataclass
-class Transaction:
+class CurrencyExchangeTransaction:
     """Exchange ETH for USD or vice versa"""
 
     time: datetime.datetime
@@ -31,7 +31,7 @@ class Transaction:
 
 
 @dataclasses.dataclass
-class AcquireTransaction(Transaction):
+class AcquireTransaction(CurrencyExchangeTransaction):
     """USD to ETH"""
 
     cost_us_cents_per_eth_including_fees: int
@@ -44,14 +44,14 @@ class AcquireTransaction(Transaction):
 
 
 @dataclasses.dataclass
-class SpendTransaction(Transaction):
+class SpendTransaction(CurrencyExchangeTransaction):
     """ETH to USD (including as fee)"""
 
     proceeds_us_cents_per_eth_excluding_fees: int
 
 
 def sort_transactions_in_chronologial_order(
-    transactions: list[Transaction],
-) -> list[Transaction]:
+    transactions: list[CurrencyExchangeTransaction],
+) -> list[CurrencyExchangeTransaction]:
     """Sort transactions from oldest to newest"""
     return sorted(transactions, key=lambda transaction: transaction.time)
