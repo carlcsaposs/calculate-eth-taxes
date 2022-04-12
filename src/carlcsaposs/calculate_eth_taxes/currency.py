@@ -24,6 +24,21 @@ from . import file_writer
 from . import utils
 
 
+def round_decimal(number: decimal.Decimal, places: int) -> decimal.Decimal:
+    """Round decimal to number of places, rounding half up"""
+    if places < 0:
+        raise ValueError
+    number = number.quantize(
+        decimal.Decimal(10) ** -places, rounding=decimal.ROUND_HALF_UP
+    )
+    return number
+
+
+def round_decimal_to_int(number: decimal.Decimal) -> int:
+    """Round decimal to zero places, rounding half up"""
+    return int(round_decimal(number, 0))
+
+
 @dataclasses.dataclass
 class SpentETH:
     """ETH that has been spent by taxpayer for USD (including as a fee)
@@ -50,11 +65,7 @@ class SpentETH:
 
     def convert_to_form_8949_row(self) -> file_writer.Form8949Row:
         """Convert to Form 8949 row"""
-        amount_eth: decimal.Decimal = self.amount_wei / decimal.Decimal(10**18)
-        # Round to eighteen decimal places
-        amount_eth = amount_eth.quantize(
-            decimal.Decimal(10) ** -18, rounding=decimal.ROUND_HALF_UP
-        )
+        amount_eth = round_decimal(self.amount_wei / decimal.Decimal(10**18), 18)
         return file_writer.Form8949Row(
             self.time_spent.year,
             utils.is_long_term(self.time_acquired, self.time_spent),
@@ -95,13 +106,13 @@ class AcquiredETH:
             self.time_acquired,
             time_spent,
             self.amount_wei,
-            (
+            round_decimal_to_int(
                 (self.amount_wei * self.cost_us_cents_per_eth_including_fees)
-                // (100 * 10**18)
+                / decimal.Decimal(100 * 10**18)
             ),  # 100 is cents to dollars, 10**18 is Wei to ETH
-            (
+            round_decimal_to_int(
                 (self.amount_wei * proceeds_us_cents_per_eth_excluding_fees)
-                // (100 * 10**18)
+                / decimal.Decimal(100 * 10**18)
             ),  # 100 is cents to dollars, 10**18 is Wei to ETH
         )
 

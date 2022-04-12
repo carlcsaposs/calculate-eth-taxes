@@ -16,6 +16,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 # pylint: disable=missing-docstring
 import datetime
+import decimal
 
 import pytest
 
@@ -148,8 +149,12 @@ def test_convert_acquired_eth_to_spent_eth():
         datetime.datetime(2022, 3, 13, 20, 10, 59),
         time_spent,
         3583178900000000000,
-        int(3.5831789 * 2570.75),
-        int(3.5831789 * 2568.32),
+        (decimal.Decimal("3.5831789") * decimal.Decimal("2570.75")).to_integral_value(
+            rounding=decimal.ROUND_HALF_UP
+        ),
+        (decimal.Decimal("3.5831789") * decimal.Decimal("2568.32")).to_integral_value(
+            rounding=decimal.ROUND_HALF_UP
+        ),
     )
     assert acquired_eth.convert_to_spent_eth(time_spent, 256832) == spent_eth
 
