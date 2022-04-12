@@ -48,25 +48,6 @@ class SpentETH:
         if self.time_spent <= self.time_acquired:
             raise ValueError("'time_spent' must be after 'time_acquired'")
 
-    def _is_long_term(self) -> bool:
-        """Long term is one calendar year or more*
-
-        *Does not include date of acquistion
-        """
-        # Including date of acquistion, long term is more than one
-        # calendar year.
-        acquired = self.time_acquired.date()
-        spent = self.time_spent.date()
-        try:
-            acquired = acquired.replace(year=acquired.year + 1)
-        except ValueError:
-            if acquired.day == 29 and acquired.month == 2:
-                # Leap day
-                acquired = acquired.replace(year=acquired.year + 1, day=28)
-            else:
-                raise
-        return acquired < spent
-
     def convert_to_form_8949_row(self) -> file_writer.Form8949Row:
         """Convert to Form 8949 row"""
         amount_eth: decimal.Decimal = self.amount_wei / decimal.Decimal(10**18)
@@ -76,7 +57,7 @@ class SpentETH:
         )
         return file_writer.Form8949Row(
             self.time_spent.year,
-            self._is_long_term(),
+            utils.is_long_term(self.time_acquired, self.time_spent),
             f"{amount_eth} ETH",
             self.time_acquired.strftime("%m/%d/%Y"),
             self.time_spent.strftime("%m/%d/%Y"),

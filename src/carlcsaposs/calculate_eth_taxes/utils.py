@@ -16,6 +16,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+import datetime
 import enum
 
 
@@ -29,3 +30,25 @@ class NumberDomain(enum.Enum):
         """Raise ValueError if number is not within domain"""
         if not self.value[0](number):
             raise ValueError(f"expected '{key}' {self.value[1]}, got {number} instead")
+
+
+def is_long_term(
+    time_acquired: datetime.datetime, time_spent: datetime.datetime
+) -> bool:
+    """Long term is one calendar year or more*
+
+    *Does not include date of acquistion
+    """
+    # Including date of acquistion, long term is more than one calendar
+    # year.
+    acquired: datetime.date = time_acquired.date()
+    spent: datetime.date = time_spent.date()
+    try:
+        acquired = acquired.replace(year=acquired.year + 1)
+    except ValueError:
+        if acquired.day == 29 and acquired.month == 2:
+            # Leap day
+            acquired = acquired.replace(year=acquired.year + 1, day=28)
+        else:
+            raise
+    return acquired < spent
