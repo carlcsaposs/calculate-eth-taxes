@@ -1,5 +1,5 @@
 """
-exchange: Exchange currencies (ETH for USD or vice versa)
+exchange_transactions:  Currency exchange transactions (ETH for USD or vice versa)
 
 Copyright (C) 2022 Carl Csaposs
 
@@ -23,7 +23,7 @@ from . import currency
 
 
 @dataclasses.dataclass
-class CurrencyExchangeTransaction:
+class CurrencyExchange:
     """Exchange ETH for USD or vice versa"""
 
     time: datetime.datetime
@@ -31,7 +31,7 @@ class CurrencyExchangeTransaction:
 
 
 @dataclasses.dataclass
-class AcquireTransaction(CurrencyExchangeTransaction):
+class Acquire(CurrencyExchange):
     """USD to ETH"""
 
     cost_us_cents_per_eth_including_fees: int
@@ -44,14 +44,7 @@ class AcquireTransaction(CurrencyExchangeTransaction):
 
 
 @dataclasses.dataclass
-class SpendTransaction(CurrencyExchangeTransaction):
+class Spend(CurrencyExchange):
     """ETH to USD (including as fee)"""
 
     proceeds_us_cents_per_eth_excluding_fees: int
-
-
-def sort_transactions_in_chronologial_order(
-    transactions: list[CurrencyExchangeTransaction],
-) -> list[CurrencyExchangeTransaction]:
-    """Sort transactions from oldest to newest"""
-    return sorted(transactions, key=lambda transaction: transaction.time)
