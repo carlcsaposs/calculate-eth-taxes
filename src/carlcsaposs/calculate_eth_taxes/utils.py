@@ -17,6 +17,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import datetime
+import decimal
 import enum
 
 
@@ -52,3 +53,18 @@ def is_long_term(
         else:
             raise
     return acquired < spent
+
+
+def round_decimal(number: decimal.Decimal, places: int) -> decimal.Decimal:
+    """Round decimal to number of places, rounding half up"""
+    if places < 0:
+        raise ValueError
+    number = number.quantize(
+        decimal.Decimal(10) ** -places, rounding=decimal.ROUND_HALF_UP
+    )
+    return number
+
+
+def round_decimal_to_int(number: decimal.Decimal) -> int:
+    """Round decimal to zero places, rounding half up"""
+    return int(round_decimal(number, 0))
