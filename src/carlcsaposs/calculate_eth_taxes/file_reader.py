@@ -22,14 +22,14 @@ class WalletTransaction:
     # Wei: 10^-18 ETH
     amount_wei: int
     fee_wei: int
-    us_cents_per_eth: int
+    us_cents_per_eth: decimal.Decimal
 
     def __post_init__(self):
         self.wallet_from = self.wallet_from.lower()
         self.wallet_to = self.wallet_to.lower()
 
     def convert_fee_to_spend_transaction(self) -> exchange_transactions.Spend:
-        return exchange_transactions.Spend(self.time, self.fee_wei, 0)
+        return exchange_transactions.Spend(self.time, self.fee_wei, decimal.Decimal(0))
 
     def convert_amount_to_spend_transaction(self) -> exchange_transactions.Spend:
         return exchange_transactions.Spend(
@@ -81,9 +81,7 @@ for file_name in user_input.ETHERSCAN_TRANSACTION_CSVS:
                     utils.round_decimal_to_int(
                         decimal.Decimal(row["TxnFee(ETH)"]) * 10**18
                     ),
-                    utils.round_decimal_to_int(
-                        decimal.Decimal(row["Historical $Price/Eth"]) * 100
-                    ),
+                    decimal.Decimal(row["Historical $Price/Eth"]) * 100,
                 )
             )
 
@@ -131,11 +129,9 @@ with open(
                 exchange_transactions.Acquire(
                     time,
                     amount_wei,
-                    utils.round_decimal_to_int(
-                        decimal.Decimal(row["Total (inclusive of fees)"])
-                        * 100
-                        / amount_eth
-                    ),
+                    decimal.Decimal(row["Total (inclusive of fees)"])
+                    * 100
+                    / amount_eth,
                 )
             )
         elif row["Transaction Type"] == "Sell":
@@ -212,9 +208,10 @@ for index, row in enumerate(coinbase_pro_rows):
             amount_wei = utils.round_decimal_to_int(
                 second_match_order.amount * 10**18
             )
-            cost_us_cents_per_eth_including_fees = utils.round_decimal_to_int(
+            cost_us_cents_per_eth_including_fees = (
                 -first_match_order.amount * 100 / second_match_order.amount
             )
+
             EXCHANGE_TRANSACTIONS.append(
                 exchange_transactions.Acquire(
                     second_match_order.time,
@@ -230,7 +227,7 @@ for index, row in enumerate(coinbase_pro_rows):
             )
             fee = decimal.Decimal(row["amount"])
             assert fee < 0
-            proceeds_us_cents_per_eth_excluding_fees = utils.round_decimal_to_int(
+            proceeds_us_cents_per_eth_excluding_fees = (
                 (second_match_order.amount + fee) * 100 / (-first_match_order.amount)
             )
             EXCHANGE_TRANSACTIONS.append(
@@ -307,7 +304,7 @@ for coinbase_transaction in COINBASE_TRANSFER_TRANSACTIONS:
                 exchange_transactions.Spend(
                     coinbase_transaction.time,
                     coinbase_transaction.amount_wei,
-                    utils.round_decimal_to_int(5992 / decimal.Decimal("0.076506")),
+                    5992 / decimal.Decimal("0.076506"),
                 )
             )
         else:
@@ -337,6 +334,5 @@ spent_eths = transaction_processor.convert_transactions_to_spent_eth(
 )
 
 rows = [spent_eth.convert_to_form_8949_row() for spent_eth in spent_eths]
-print(sum([row.proceeds_usd - row.cost_usd for row in rows if row.tax_year == 2021]))
 
 file_writer.Form8949File(rows).write_to_file("output.csv")

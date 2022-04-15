@@ -75,7 +75,7 @@ class AcquiredETH:
 
     time_acquired: datetime.datetime
     amount_wei: int  # Wei: 10^-18 ETH
-    cost_us_cents_per_eth_including_fees: int
+    cost_us_cents_per_eth_including_fees: decimal.Decimal
 
     def __post_init__(self):
         for attribute in ["amount_wei", "cost_us_cents_per_eth_including_fees"]:
@@ -86,7 +86,7 @@ class AcquiredETH:
     def convert_to_spent_eth(
         self,
         time_spent: datetime.datetime,
-        proceeds_us_cents_per_eth_excluding_fees: int,
+        proceeds_us_cents_per_eth_excluding_fees: decimal.Decimal,
     ) -> SpentETH:
         """Convert to 'SpentETH'"""
         return SpentETH(

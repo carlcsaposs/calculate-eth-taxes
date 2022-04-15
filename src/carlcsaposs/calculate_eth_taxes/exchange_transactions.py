@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import dataclasses
 import datetime
+import decimal
 
 from . import currency
 
@@ -34,7 +35,7 @@ class CurrencyExchange:
 class Acquire(CurrencyExchange):
     """USD to ETH"""
 
-    cost_us_cents_per_eth_including_fees: int
+    cost_us_cents_per_eth_including_fees: decimal.Decimal
 
     def convert_to_acquired_eth(self) -> currency.AcquiredETH:
         """Create 'AcquiredETH' instance for this transaction"""
@@ -47,4 +48,4 @@ class Acquire(CurrencyExchange):
 class Spend(CurrencyExchange):
     """ETH to USD (including as fee)"""
 
-    proceeds_us_cents_per_eth_excluding_fees: int
+    proceeds_us_cents_per_eth_excluding_fees: decimal.Decimal
