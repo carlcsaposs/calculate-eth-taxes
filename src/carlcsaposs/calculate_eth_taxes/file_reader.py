@@ -183,17 +183,28 @@ for global_list, items in zip(
 ):
     global_list += items
 
+
+def read_coinbase_pro_transactions(
+    coinbase_pro_csv: str, blocklisted_coinbase_pro_transfer_ids: list[str]
+) -> tuple[CoinbaseTransferTransactions, ExchangeTransactions]:
+    """Read transactions from Coinbase Pro CSV
+
+    Read Coinbase transfer transactions and currency exchange
+    transactions
+    """
+    coinbase_transfer_transactions: CoinbaseTransferTransactions = []
+    exchange_transactions_: ExchangeTransactions = []
+
 coinbase_pro_rows: list[dict[str, str]] = []
 with open(
-    f"/home/user/QubesIncoming/files/calculate-eth-taxes/input/{user_input.COINBASE_PRO_ACCOUNT_CSV}",
+        f"/home/user/QubesIncoming/files/calculate-eth-taxes/input/{coinbase_pro_csv}",
     "r",
     encoding="utf-8",
 ) as file:
     for row in csv.DictReader(file):
-        if row["transfer id"] in user_input.BLOCKLISTED_COINBASE_PRO_TRANSFER_IDS:
+            if row["transfer id"] in blocklisted_coinbase_pro_transfer_ids:
             continue
         coinbase_pro_rows.append(row)
-
 
 class CoinbaseProOrderMatchRow:
     class Unit(enum.Enum):
@@ -211,7 +222,6 @@ class CoinbaseProOrderMatchRow:
         self.amount = decimal.Decimal(row["amount"])
         self.unit = self.Unit[row["amount/balance unit"]]
 
-
 last_order_id_first_index: typing.Optional[int] = None
 for index, row in enumerate(coinbase_pro_rows):
     # Exchange USD for ETH or vice versa
@@ -226,7 +236,9 @@ for index, row in enumerate(coinbase_pro_rows):
         first_match_order = CoinbaseProOrderMatchRow(coinbase_pro_rows[index - 2])
         second_match_order = CoinbaseProOrderMatchRow(coinbase_pro_rows[index - 1])
         assert (
-            first_match_order.order_id == second_match_order.order_id == row["order id"]
+                first_match_order.order_id
+                == second_match_order.order_id
+                == row["order id"]
         )
         assert first_match_order.time == second_match_order.time
         assert first_match_order.amount < 0 and second_match_order.amount > 0
@@ -240,7 +252,7 @@ for index, row in enumerate(coinbase_pro_rows):
                 -first_match_order.amount * 100 / second_match_order.amount
             )
 
-            EXCHANGE_TRANSACTIONS.append(
+                exchange_transactions_.append(
                 exchange_transactions.Acquire(
                     second_match_order.time,
                     amount_wei,
@@ -256,9 +268,11 @@ for index, row in enumerate(coinbase_pro_rows):
             fee = decimal.Decimal(row["amount"])
             assert fee < 0
             proceeds_us_cents_per_eth_excluding_fees = (
-                (second_match_order.amount + fee) * 100 / (-first_match_order.amount)
+                    (second_match_order.amount + fee)
+                    * 100
+                    / (-first_match_order.amount)
             )
-            EXCHANGE_TRANSACTIONS.append(
+                exchange_transactions_.append(
                 exchange_transactions.Spend(
                     second_match_order.time,
                     amount_wei,
@@ -273,16 +287,30 @@ for index, row in enumerate(coinbase_pro_rows):
         continue
     assert row["amount/balance unit"] == "ETH"
     time = convert_coinbase_pro_timestamp_to_datetime(row["time"])
-    amount_wei = utils.round_decimal_to_int(decimal.Decimal(row["amount"]) * 10**18)
+        amount_wei = utils.round_decimal_to_int(
+            decimal.Decimal(row["amount"]) * 10**18
+        )
     if row["type"] == "withdrawal":
         amount_wei = -amount_wei
         type_ = CoinbaseTransferTransaction.TransactionType.FROM_COINBASE
     elif row["type"] == "deposit":
         type_ = CoinbaseTransferTransaction.TransactionType.TO_COINBASE
     assert amount_wei > 0
-    COINBASE_TRANSFER_TRANSACTIONS.append(
+        coinbase_transfer_transactions.append(
         CoinbaseTransferTransaction(time, amount_wei, type_)
     )
+    return (coinbase_transfer_transactions, exchange_transactions_)
+
+
+for global_list, items in zip(
+    [COINBASE_TRANSFER_TRANSACTIONS, EXCHANGE_TRANSACTIONS],
+    read_coinbase_pro_transactions(
+        user_input.COINBASE_PRO_ACCOUNT_CSV,
+        user_input.BLOCKLISTED_COINBASE_PRO_TRANSFER_IDS,
+    ),
+):
+    global_list += items
+
 
 COINBASE_TRANSFER_TRANSACTIONS = sorted(
     COINBASE_TRANSFER_TRANSACTIONS, key=lambda transaction: transaction.time
