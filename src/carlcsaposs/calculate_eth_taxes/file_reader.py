@@ -63,7 +63,7 @@ for file_name in user_input.ETHERSCAN_TRANSACTION_CSVS:
             if row["Status"] == "Error(0)" and row["ErrCode"] == "Out of gas":
                 # If there is an error, no ETH will be transferred but the fee will still be lost
                 amount_wei = 0
-            # Override for internal transaction
+            # HACK: Override for internal transaction
             elif (
                 row["Txhash"]
                 == "0x6f0b139844b33d88d6ee6acedfb8cf4ba1f5d6e8b9d85d91d14ab238a9f8a443"
@@ -124,7 +124,6 @@ with open(
         amount_eth = decimal.Decimal(row["Quantity Transacted"])
         amount_wei = utils.round_decimal_to_int(amount_eth * 10**18)
         if row["Transaction Type"] == "Buy":
-
             EXCHANGE_TRANSACTIONS.append(
                 exchange_transactions.Acquire(
                     time,
