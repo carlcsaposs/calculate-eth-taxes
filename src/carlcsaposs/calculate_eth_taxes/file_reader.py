@@ -37,53 +37,62 @@ class WalletTransaction:
         )
 
 
-WALLET_TRANSACTIONS_BY_WALLET: dict[str, list[WalletTransaction]] = {}
+def read_etherscan_wallets(
+    wallet_csvs: list[str],
+) -> dict[str, list[WalletTransaction]]:
+    """Read list of transactions from each Etherscan wallet CSV"""
+    transactions_by_wallet: dict[str, list[WalletTransaction]] = {}
+    for file_name in wallet_csvs:
+        with open(
+            f"/home/user/QubesIncoming/files/calculate-eth-taxes/input/{file_name}",
+            "r",
+            encoding="utf-8",
+        ) as file:
+            wallet_address = file_name.split("-")[1].split(".")[0].lower()
+            assert len(wallet_address) == 42
+            transactions_by_wallet[wallet_address] = []
+            for row in csv.DictReader(file):
 
-for file_name in user_input.ETHERSCAN_TRANSACTION_CSVS:
-    with open(
-        f"/home/user/QubesIncoming/files/calculate-eth-taxes/input/{file_name}",
-        "r",
-        encoding="utf-8",
-    ) as file:
-        wallet_address = file_name.split("-")[1].split(".")[0].lower()
-        assert len(wallet_address) == 42
-        WALLET_TRANSACTIONS_BY_WALLET[wallet_address] = []
-        for row in csv.DictReader(file):
+                def convert_eth_to_wei(amount_eth: str) -> int:
+                    return utils.round_decimal_to_int(
+                        decimal.Decimal(amount_eth) * 10**18
+                    )
 
-            def convert_eth_to_wei(amount_eth: str) -> int:
-                return utils.round_decimal_to_int(
-                    decimal.Decimal(amount_eth) * 10**18
+                amount_in = convert_eth_to_wei(row["Value_IN(ETH)"])
+                amount_out = convert_eth_to_wei(row["Value_OUT(ETH)"])
+                assert amount_in == 0 or amount_out == 0
+                amount_wei = amount_in or amount_out
+                # Check for error
+                if row["Status"] == "Error(0)" and row["ErrCode"] == "Out of gas":
+                    # If there is an error, no ETH will be transferred but the fee will still be lost
+                    amount_wei = 0
+                # HACK: Override for internal transaction
+                elif (
+                    row["Txhash"]
+                    == "0x6f0b139844b33d88d6ee6acedfb8cf4ba1f5d6e8b9d85d91d14ab238a9f8a443"
+                ):
+                    amount_wei -= 2837798149744091
+                    assert amount_wei == 56755962994881820
+                else:
+                    assert row["Status"] == "" and row["ErrCode"] == ""
+                transactions_by_wallet[wallet_address].append(
+                    WalletTransaction(
+                        datetime.datetime.fromtimestamp(int(row["UnixTimestamp"])),
+                        row["From"],
+                        row["To"],
+                        amount_wei,
+                        utils.round_decimal_to_int(
+                            decimal.Decimal(row["TxnFee(ETH)"]) * 10**18
+                        ),
+                        decimal.Decimal(row["Historical $Price/Eth"]) * 100,
+                    )
                 )
+    return transactions_by_wallet
 
-            amount_in = convert_eth_to_wei(row["Value_IN(ETH)"])
-            amount_out = convert_eth_to_wei(row["Value_OUT(ETH)"])
-            assert amount_in == 0 or amount_out == 0
-            amount_wei = amount_in or amount_out
-            # Check for error
-            if row["Status"] == "Error(0)" and row["ErrCode"] == "Out of gas":
-                # If there is an error, no ETH will be transferred but the fee will still be lost
-                amount_wei = 0
-            # HACK: Override for internal transaction
-            elif (
-                row["Txhash"]
-                == "0x6f0b139844b33d88d6ee6acedfb8cf4ba1f5d6e8b9d85d91d14ab238a9f8a443"
-            ):
-                amount_wei -= 2837798149744091
-                assert amount_wei == 56755962994881820
-            else:
-                assert row["Status"] == "" and row["ErrCode"] == ""
-            WALLET_TRANSACTIONS_BY_WALLET[wallet_address].append(
-                WalletTransaction(
-                    datetime.datetime.fromtimestamp(int(row["UnixTimestamp"])),
-                    row["From"],
-                    row["To"],
-                    amount_wei,
-                    utils.round_decimal_to_int(
-                        decimal.Decimal(row["TxnFee(ETH)"]) * 10**18
-                    ),
-                    decimal.Decimal(row["Historical $Price/Eth"]) * 100,
-                )
-            )
+
+WALLET_TRANSACTIONS_BY_WALLET = read_etherscan_wallets(
+    user_input.ETHERSCAN_TRANSACTION_CSVS
+)
 
 
 @dataclasses.dataclass
