@@ -312,6 +312,7 @@ for global_list, items in zip(
     global_list += items
 
 
+# Correlate Coinbase transfer transactions with Etherscan wallet transactions
 COINBASE_TRANSFER_TRANSACTIONS = sorted(
     COINBASE_TRANSFER_TRANSACTIONS, key=lambda transaction: transaction.time
 )
@@ -350,6 +351,7 @@ for coinbase_transaction in COINBASE_TRANSFER_TRANSACTIONS:
             continue
         break
     else:
+        # HACK: Transaction of ETH spent directly from Coinbase
         if (
             coinbase_transaction.time == datetime.datetime(2021, 1, 2, 19, 37, 5)
             and coinbase_transaction.amount_wei == 76506000000000000
@@ -368,6 +370,7 @@ for coinbase_transaction in COINBASE_TRANSFER_TRANSACTIONS:
 WALLET_ADDRESSES = list(WALLET_TRANSACTIONS_BY_WALLET.keys())
 WALLET_ADDRESSES.append("coinbase")
 
+# Process Etherscan wallet transactions into exchange transactions
 for wallet_address, transactions in WALLET_TRANSACTIONS_BY_WALLET.items():
     for transaction in transactions:
         if transaction.wallet_to == wallet_address:
