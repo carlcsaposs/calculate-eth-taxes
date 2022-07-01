@@ -1,4 +1,21 @@
-# pylint: disable=missing-docstring
+"""
+file_reader: Process CSV file data to currency exchange transactions
+
+Copyright (C) 2022 Carl Csaposs
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
 import csv
 import dataclasses
 import datetime
@@ -6,10 +23,7 @@ import decimal
 import enum
 import typing
 
-from . import file_writer
 from . import exchange_transactions
-from . import transaction_processor
-from . import user_input
 from . import utils
 
 
@@ -90,11 +104,6 @@ def read_etherscan_wallets(
     return transactions_by_wallet
 
 
-WALLET_TRANSACTIONS_BY_WALLET = read_etherscan_wallets(
-    user_input.ETHERSCAN_TRANSACTION_CSVS
-)
-
-
 @dataclasses.dataclass
 class CoinbaseTransferTransaction:
     class TransactionType(enum.Enum):
@@ -120,8 +129,6 @@ def convert_coinbase_pro_timestamp_to_datetime(
 
 CoinbaseTransferTransactions = list[CoinbaseTransferTransaction]
 ExchangeTransactions = list[exchange_transactions.CurrencyExchange]
-COINBASE_TRANSFER_TRANSACTIONS: CoinbaseTransferTransactions = []
-EXCHANGE_TRANSACTIONS: ExchangeTransactions = []
 
 
 def read_coinbase_transactions(
@@ -134,54 +141,47 @@ def read_coinbase_transactions(
     """
     coinbase_transfer_transactions: CoinbaseTransferTransactions = []
     exchange_transactions_: ExchangeTransactions = []
-with open(
+    with open(
         f"/home/user/QubesIncoming/files/calculate-eth-taxes/input/{coinbase_csv}",
-    "r",
-    encoding="utf-8",
-) as file:
-    for row in csv.DictReader(file):
-        assert row["Asset"] == "ETH"
-        time = convert_coinbase_timestamp_to_datetime(row["Timestamp"])
-        amount_eth = decimal.Decimal(row["Quantity Transacted"])
-        amount_wei = utils.round_decimal_to_int(amount_eth * 10**18)
-        if row["Transaction Type"] == "Buy":
+        "r",
+        encoding="utf-8",
+    ) as file:
+        for row in csv.DictReader(file):
+            assert row["Asset"] == "ETH"
+            time = convert_coinbase_timestamp_to_datetime(row["Timestamp"])
+            amount_eth = decimal.Decimal(row["Quantity Transacted"])
+            amount_wei = utils.round_decimal_to_int(amount_eth * 10**18)
+            if row["Transaction Type"] == "Buy":
                 exchange_transactions_.append(
-                exchange_transactions.Acquire(
-                    time,
-                    amount_wei,
-                    decimal.Decimal(row["Total (inclusive of fees)"])
-                    * 100
-                    / amount_eth,
+                    exchange_transactions.Acquire(
+                        time,
+                        amount_wei,
+                        decimal.Decimal(row["Total (inclusive of fees)"])
+                        * 100
+                        / amount_eth,
+                    )
                 )
-            )
-        elif row["Transaction Type"] == "Sell":
-            raise NotImplementedError
-        elif row["Transaction Type"] == "Send":
+            elif row["Transaction Type"] == "Sell":
+                raise NotImplementedError
+            elif row["Transaction Type"] == "Send":
                 coinbase_transfer_transactions.append(
-                CoinbaseTransferTransaction(
-                    time,
-                    amount_wei,
-                    CoinbaseTransferTransaction.TransactionType.FROM_COINBASE,
+                    CoinbaseTransferTransaction(
+                        time,
+                        amount_wei,
+                        CoinbaseTransferTransaction.TransactionType.FROM_COINBASE,
+                    )
                 )
-            )
-        elif row["Transaction Type"] == "Receive":
+            elif row["Transaction Type"] == "Receive":
                 coinbase_transfer_transactions.append(
-                CoinbaseTransferTransaction(
-                    time,
-                    amount_wei,
-                    CoinbaseTransferTransaction.TransactionType.TO_COINBASE,
+                    CoinbaseTransferTransaction(
+                        time,
+                        amount_wei,
+                        CoinbaseTransferTransaction.TransactionType.TO_COINBASE,
+                    )
                 )
-            )
-        else:
-            raise ValueError
+            else:
+                raise ValueError
     return (coinbase_transfer_transactions, exchange_transactions_)
-
-
-for global_list, items in zip(
-    [COINBASE_TRANSFER_TRANSACTIONS, EXCHANGE_TRANSACTIONS],
-    read_coinbase_transactions(user_input.COINBASE_CSV),
-):
-    global_list += items
 
 
 def read_coinbase_pro_transactions(
@@ -195,203 +195,212 @@ def read_coinbase_pro_transactions(
     coinbase_transfer_transactions: CoinbaseTransferTransactions = []
     exchange_transactions_: ExchangeTransactions = []
 
-coinbase_pro_rows: list[dict[str, str]] = []
-with open(
+    coinbase_pro_rows: list[dict[str, str]] = []
+    with open(
         f"/home/user/QubesIncoming/files/calculate-eth-taxes/input/{coinbase_pro_csv}",
-    "r",
-    encoding="utf-8",
-) as file:
-    for row in csv.DictReader(file):
+        "r",
+        encoding="utf-8",
+    ) as file:
+        for row in csv.DictReader(file):
             if row["transfer id"] in blocklisted_coinbase_pro_transfer_ids:
-            continue
-        coinbase_pro_rows.append(row)
+                continue
+            coinbase_pro_rows.append(row)
 
-class CoinbaseProOrderMatchRow:
-    class Unit(enum.Enum):
-        ETH = enum.auto()
-        USD = enum.auto()
+    class CoinbaseProOrderMatchRow:
+        class Unit(enum.Enum):
+            ETH = enum.auto()
+            USD = enum.auto()
 
-    order_id: str
-    time: datetime.datetime
-    amount: decimal.Decimal
-    unit: Unit
+        order_id: str
+        time: datetime.datetime
+        amount: decimal.Decimal
+        unit: Unit
 
-    def __init__(self, row: dict[str, str]):
-        self.order_id = row["order id"]
-        self.time = convert_coinbase_pro_timestamp_to_datetime(row["time"])
-        self.amount = decimal.Decimal(row["amount"])
-        self.unit = self.Unit[row["amount/balance unit"]]
+        def __init__(self, row: dict[str, str]):
+            self.order_id = row["order id"]
+            self.time = convert_coinbase_pro_timestamp_to_datetime(row["time"])
+            self.amount = decimal.Decimal(row["amount"])
+            self.unit = self.Unit[row["amount/balance unit"]]
 
-last_order_id_first_index: typing.Optional[int] = None
-for index, row in enumerate(coinbase_pro_rows):
-    # Exchange USD for ETH or vice versa
-    if row["order id"] != "":
-        if last_order_id_first_index is None:
-            assert row["type"] == "match"
-            last_order_id_first_index = index
-        if row["type"] == "match":
-            continue
+    last_order_id_first_index: typing.Optional[int] = None
+    for index, row in enumerate(coinbase_pro_rows):
+        # Exchange USD for ETH or vice versa
+        if row["order id"] != "":
+            if last_order_id_first_index is None:
+                assert row["type"] == "match"
+                last_order_id_first_index = index
+            if row["type"] == "match":
+                continue
 
-        assert row["type"] == "fee"
-        first_match_order = CoinbaseProOrderMatchRow(coinbase_pro_rows[index - 2])
-        second_match_order = CoinbaseProOrderMatchRow(coinbase_pro_rows[index - 1])
-        assert (
+            assert row["type"] == "fee"
+            first_match_order = CoinbaseProOrderMatchRow(coinbase_pro_rows[index - 2])
+            second_match_order = CoinbaseProOrderMatchRow(coinbase_pro_rows[index - 1])
+            assert (
                 first_match_order.order_id
                 == second_match_order.order_id
                 == row["order id"]
-        )
-        assert first_match_order.time == second_match_order.time
-        assert first_match_order.amount < 0 and second_match_order.amount > 0
-        # USD for ETH
-        if first_match_order.unit == CoinbaseProOrderMatchRow.Unit.USD:
-            assert second_match_order.unit == CoinbaseProOrderMatchRow.Unit.ETH
-            amount_wei = utils.round_decimal_to_int(
-                second_match_order.amount * 10**18
             )
-            cost_us_cents_per_eth_including_fees = (
-                -first_match_order.amount * 100 / second_match_order.amount
-            )
+            assert first_match_order.time == second_match_order.time
+            assert first_match_order.amount < 0 and second_match_order.amount > 0
+            # USD for ETH
+            if first_match_order.unit == CoinbaseProOrderMatchRow.Unit.USD:
+                assert second_match_order.unit == CoinbaseProOrderMatchRow.Unit.ETH
+                amount_wei = utils.round_decimal_to_int(
+                    second_match_order.amount * 10**18
+                )
+                cost_us_cents_per_eth_including_fees = (
+                    -first_match_order.amount * 100 / second_match_order.amount
+                )
 
                 exchange_transactions_.append(
-                exchange_transactions.Acquire(
-                    second_match_order.time,
-                    amount_wei,
-                    cost_us_cents_per_eth_including_fees,
+                    exchange_transactions.Acquire(
+                        second_match_order.time,
+                        amount_wei,
+                        cost_us_cents_per_eth_including_fees,
+                    )
                 )
-            )
-        # ETH for USD
-        elif first_match_order.unit == CoinbaseProOrderMatchRow.Unit.ETH:
-            assert second_match_order.unit == CoinbaseProOrderMatchRow.Unit.USD
-            amount_wei = utils.round_decimal_to_int(
-                -first_match_order.amount * 10**18
-            )
-            fee = decimal.Decimal(row["amount"])
-            assert fee < 0
-            proceeds_us_cents_per_eth_excluding_fees = (
+            # ETH for USD
+            elif first_match_order.unit == CoinbaseProOrderMatchRow.Unit.ETH:
+                assert second_match_order.unit == CoinbaseProOrderMatchRow.Unit.USD
+                amount_wei = utils.round_decimal_to_int(
+                    -first_match_order.amount * 10**18
+                )
+                fee = decimal.Decimal(row["amount"])
+                assert fee < 0
+                proceeds_us_cents_per_eth_excluding_fees = (
                     (second_match_order.amount + fee)
                     * 100
                     / (-first_match_order.amount)
-            )
-                exchange_transactions_.append(
-                exchange_transactions.Spend(
-                    second_match_order.time,
-                    amount_wei,
-                    proceeds_us_cents_per_eth_excluding_fees,
                 )
-            )
-        last_order_id_first_index = None
-        continue
+                exchange_transactions_.append(
+                    exchange_transactions.Spend(
+                        second_match_order.time,
+                        amount_wei,
+                        proceeds_us_cents_per_eth_excluding_fees,
+                    )
+                )
+            last_order_id_first_index = None
+            continue
 
-    assert row["type"] in ["withdrawal", "deposit"]
-    if row["amount/balance unit"] == "USD":
-        continue
-    assert row["amount/balance unit"] == "ETH"
-    time = convert_coinbase_pro_timestamp_to_datetime(row["time"])
+        assert row["type"] in ["withdrawal", "deposit"]
+        if row["amount/balance unit"] == "USD":
+            continue
+        assert row["amount/balance unit"] == "ETH"
+        time = convert_coinbase_pro_timestamp_to_datetime(row["time"])
         amount_wei = utils.round_decimal_to_int(
             decimal.Decimal(row["amount"]) * 10**18
         )
-    if row["type"] == "withdrawal":
-        amount_wei = -amount_wei
-        type_ = CoinbaseTransferTransaction.TransactionType.FROM_COINBASE
-    elif row["type"] == "deposit":
-        type_ = CoinbaseTransferTransaction.TransactionType.TO_COINBASE
-    assert amount_wei > 0
+        if row["type"] == "withdrawal":
+            amount_wei = -amount_wei
+            type_ = CoinbaseTransferTransaction.TransactionType.FROM_COINBASE
+        elif row["type"] == "deposit":
+            type_ = CoinbaseTransferTransaction.TransactionType.TO_COINBASE
+        assert amount_wei > 0
         coinbase_transfer_transactions.append(
-        CoinbaseTransferTransaction(time, amount_wei, type_)
-    )
+            CoinbaseTransferTransaction(time, amount_wei, type_)
+        )
     return (coinbase_transfer_transactions, exchange_transactions_)
 
 
-for global_list, items in zip(
-    [COINBASE_TRANSFER_TRANSACTIONS, EXCHANGE_TRANSACTIONS],
-    read_coinbase_pro_transactions(
-        user_input.COINBASE_PRO_ACCOUNT_CSV,
-        user_input.BLOCKLISTED_COINBASE_PRO_TRANSFER_IDS,
-    ),
-):
-    global_list += items
+def read_files(
+    etherscan_csvs: list[str],
+    coinbase_csv: str,
+    coinbase_pro_csv: str,
+    blocklisted_coinbase_pro_transfer_ids: list[str],
+) -> ExchangeTransactions:
+    """Process CSV file data to currency exchange transactions"""
+    wallet_transactions_by_wallet = read_etherscan_wallets(etherscan_csvs)
+    coinbase_transfer_transactions: CoinbaseTransferTransactions = []
+    exchange_transactions_: ExchangeTransactions = []
 
-
-# Correlate Coinbase transfer transactions with Etherscan wallet transactions
-COINBASE_TRANSFER_TRANSACTIONS = sorted(
-    COINBASE_TRANSFER_TRANSACTIONS, key=lambda transaction: transaction.time
-)
-for coinbase_transaction in COINBASE_TRANSFER_TRANSACTIONS:
-    for wallet_address, transactions in WALLET_TRANSACTIONS_BY_WALLET.items():
-        for transaction in transactions:
-            amount_wei = transaction.amount_wei
-            if (
-                coinbase_transaction.type_
-                == CoinbaseTransferTransaction.TransactionType.FROM_COINBASE
-            ):
-                amount_wei += transaction.fee_wei
-            if abs(
-                amount_wei
-                - coinbase_transaction.amount_wei
-                # 1000000000000000 wei = .001 ETH
-            ) < 1000000000000000 and abs(
-                transaction.time - coinbase_transaction.time
-            ) < datetime.timedelta(
-                minutes=15
-            ):
+    for list_, items in zip(
+        [coinbase_transfer_transactions, exchange_transactions_],
+        read_coinbase_transactions(coinbase_csv),
+    ):
+        list_ += items
+    for list_, items in zip(
+        [coinbase_transfer_transactions, exchange_transactions_],
+        read_coinbase_pro_transactions(
+            coinbase_pro_csv,
+            blocklisted_coinbase_pro_transfer_ids,
+        ),
+    ):
+        list_ += items
+    # Correlate Coinbase transfer transactions with Etherscan wallet transactions
+    coinbase_transfer_transactions = sorted(
+        coinbase_transfer_transactions, key=lambda transaction: transaction.time
+    )
+    for coinbase_transaction in coinbase_transfer_transactions:
+        for wallet_address, transactions in wallet_transactions_by_wallet.items():
+            for transaction in transactions:
+                amount_wei = transaction.amount_wei
                 if (
                     coinbase_transaction.type_
                     == CoinbaseTransferTransaction.TransactionType.FROM_COINBASE
                 ):
-                    transaction.wallet_from = "coinbase"
-                elif (
-                    coinbase_transaction.type_
-                    == CoinbaseTransferTransaction.TransactionType.TO_COINBASE
+                    amount_wei += transaction.fee_wei
+                if abs(
+                    amount_wei
+                    - coinbase_transaction.amount_wei
+                    # 1000000000000000 wei = .001 ETH
+                ) < 1000000000000000 and abs(
+                    transaction.time - coinbase_transaction.time
+                ) < datetime.timedelta(
+                    minutes=15
                 ):
-                    transaction.wallet_to = "coinbase"
-                else:
-                    raise ValueError
-                break
-        else:
-            continue
-        break
-    else:
-        # HACK: Transaction of ETH spent directly from Coinbase
-        if (
-            coinbase_transaction.time == datetime.datetime(2021, 1, 2, 19, 37, 5)
-            and coinbase_transaction.amount_wei == 76506000000000000
-            and coinbase_transaction.type_
-            == CoinbaseTransferTransaction.TransactionType.FROM_COINBASE
-        ):
-            EXCHANGE_TRANSACTIONS.append(
-                exchange_transactions.Spend(
-                    coinbase_transaction.time,
-                    coinbase_transaction.amount_wei,
-                    5992 / decimal.Decimal("0.076506"),
-                )
-            )
-        else:
-            raise ValueError
-WALLET_ADDRESSES = list(WALLET_TRANSACTIONS_BY_WALLET.keys())
-WALLET_ADDRESSES.append("coinbase")
-
-# Process Etherscan wallet transactions into exchange transactions
-for wallet_address, transactions in WALLET_TRANSACTIONS_BY_WALLET.items():
-    for transaction in transactions:
-        if transaction.wallet_to == wallet_address:
-            if transaction.wallet_from not in WALLET_ADDRESSES:
-                raise NotImplementedError(
-                    "ETH acquistion outside of Coinbase not supported"
-                )
-            elif transaction.wallet_from != "coinbase":
+                    if (
+                        coinbase_transaction.type_
+                        == CoinbaseTransferTransaction.TransactionType.FROM_COINBASE
+                    ):
+                        transaction.wallet_from = "coinbase"
+                    elif (
+                        coinbase_transaction.type_
+                        == CoinbaseTransferTransaction.TransactionType.TO_COINBASE
+                    ):
+                        transaction.wallet_to = "coinbase"
+                    else:
+                        raise ValueError
+                    break
+            else:
                 continue
-        assert wallet_address in WALLET_ADDRESSES
-        if transaction.wallet_to not in WALLET_ADDRESSES:
-            if transaction.amount_wei != 0:
-                EXCHANGE_TRANSACTIONS.append(
-                    transaction.convert_amount_to_spend_transaction()
+            break
+        else:
+            # HACK: Transaction of ETH spent directly from Coinbase
+            if (
+                coinbase_transaction.time == datetime.datetime(2021, 1, 2, 19, 37, 5)
+                and coinbase_transaction.amount_wei == 76506000000000000
+                and coinbase_transaction.type_
+                == CoinbaseTransferTransaction.TransactionType.FROM_COINBASE
+            ):
+                exchange_transactions_.append(
+                    exchange_transactions.Spend(
+                        coinbase_transaction.time,
+                        coinbase_transaction.amount_wei,
+                        5992 / decimal.Decimal("0.076506"),
+                    )
                 )
-        EXCHANGE_TRANSACTIONS.append(transaction.convert_fee_to_spend_transaction())
+            else:
+                raise ValueError
+    wallet_addresses = list(wallet_transactions_by_wallet.keys())
+    wallet_addresses.append("coinbase")
 
-spent_eths = transaction_processor.convert_transactions_to_spent_eth(
-    EXCHANGE_TRANSACTIONS, user_input.TAX_MODES_BY_YEAR
-)
-
-rows = [spent_eth.convert_to_form_8949_row() for spent_eth in spent_eths]
-
-file_writer.Form8949File(rows).write_to_file("output.csv")
+    # Process Etherscan wallet transactions into exchange transactions
+    for wallet_address, transactions in wallet_transactions_by_wallet.items():
+        for transaction in transactions:
+            if transaction.wallet_to == wallet_address:
+                if transaction.wallet_from not in wallet_addresses:
+                    raise NotImplementedError(
+                        "ETH acquistion outside of Coinbase not supported"
+                    )
+                elif transaction.wallet_from != "coinbase":
+                    continue
+            assert wallet_address in wallet_addresses
+            if transaction.wallet_to not in wallet_addresses:
+                if transaction.amount_wei != 0:
+                    exchange_transactions_.append(
+                        transaction.convert_amount_to_spend_transaction()
+                    )
+            exchange_transactions_.append(
+                transaction.convert_fee_to_spend_transaction()
+            )
+    return exchange_transactions_

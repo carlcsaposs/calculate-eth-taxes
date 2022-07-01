@@ -16,3 +16,23 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+from . import file_reader
+from . import file_writer
+from . import transaction_processor
+from . import user_input
+
+
+EXCHANGE_TRANSACTIONS = file_reader.read_files(
+    user_input.ETHERSCAN_TRANSACTION_CSVS,
+    user_input.COINBASE_CSV,
+    user_input.COINBASE_PRO_ACCOUNT_CSV,
+    user_input.BLOCKLISTED_COINBASE_PRO_TRANSFER_IDS,
+)
+
+SPENT_ETHS = transaction_processor.convert_transactions_to_spent_eth(
+    EXCHANGE_TRANSACTIONS, user_input.TAX_MODES_BY_YEAR
+)
+
+ROWS = [spent_eth.convert_to_form_8949_row() for spent_eth in SPENT_ETHS]
+
+file_writer.Form8949File(ROWS).write_to_file("output.csv")
