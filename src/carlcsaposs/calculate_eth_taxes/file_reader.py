@@ -118,12 +118,24 @@ def convert_coinbase_pro_timestamp_to_datetime(
     return datetime.datetime.strptime(coinbase_pro_timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
 
 
-COINBASE_TRANSFER_TRANSACTIONS: list[CoinbaseTransferTransaction] = []
+CoinbaseTransferTransactions = list[CoinbaseTransferTransaction]
+ExchangeTransactions = list[exchange_transactions.CurrencyExchange]
+COINBASE_TRANSFER_TRANSACTIONS: CoinbaseTransferTransactions = []
+EXCHANGE_TRANSACTIONS: ExchangeTransactions = []
 
-EXCHANGE_TRANSACTIONS: list[exchange_transactions.CurrencyExchange] = []
 
+def read_coinbase_transactions(
+    coinbase_csv: str,
+) -> tuple[CoinbaseTransferTransactions, ExchangeTransactions]:
+    """Read transactions from Coinbase CSV
+
+    Read Coinbase transfer transactions and currency exchange
+    transactions
+    """
+    coinbase_transfer_transactions: CoinbaseTransferTransactions = []
+    exchange_transactions_: ExchangeTransactions = []
 with open(
-    f"/home/user/QubesIncoming/files/calculate-eth-taxes/input/{user_input.COINBASE_CSV}",
+        f"/home/user/QubesIncoming/files/calculate-eth-taxes/input/{coinbase_csv}",
     "r",
     encoding="utf-8",
 ) as file:
@@ -133,7 +145,7 @@ with open(
         amount_eth = decimal.Decimal(row["Quantity Transacted"])
         amount_wei = utils.round_decimal_to_int(amount_eth * 10**18)
         if row["Transaction Type"] == "Buy":
-            EXCHANGE_TRANSACTIONS.append(
+                exchange_transactions_.append(
                 exchange_transactions.Acquire(
                     time,
                     amount_wei,
@@ -145,7 +157,7 @@ with open(
         elif row["Transaction Type"] == "Sell":
             raise NotImplementedError
         elif row["Transaction Type"] == "Send":
-            COINBASE_TRANSFER_TRANSACTIONS.append(
+                coinbase_transfer_transactions.append(
                 CoinbaseTransferTransaction(
                     time,
                     amount_wei,
@@ -153,7 +165,7 @@ with open(
                 )
             )
         elif row["Transaction Type"] == "Receive":
-            COINBASE_TRANSFER_TRANSACTIONS.append(
+                coinbase_transfer_transactions.append(
                 CoinbaseTransferTransaction(
                     time,
                     amount_wei,
@@ -162,6 +174,14 @@ with open(
             )
         else:
             raise ValueError
+    return (coinbase_transfer_transactions, exchange_transactions_)
+
+
+for global_list, items in zip(
+    [COINBASE_TRANSFER_TRANSACTIONS, EXCHANGE_TRANSACTIONS],
+    read_coinbase_transactions(user_input.COINBASE_CSV),
+):
+    global_list += items
 
 coinbase_pro_rows: list[dict[str, str]] = []
 with open(
