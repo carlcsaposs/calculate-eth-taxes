@@ -29,6 +29,7 @@ from . import utils
 
 @dataclasses.dataclass
 class WalletTransaction:
+    """Transaction to and/or from a taxpayer ETH wallet"""
 
     time: datetime.datetime
     wallet_from: str
@@ -43,9 +44,11 @@ class WalletTransaction:
         self.wallet_to = self.wallet_to.lower()
 
     def convert_fee_to_spend_transaction(self) -> exchange_transactions.Spend:
+        """Spend ETH transaction fee for 0 USD"""
         return exchange_transactions.Spend(self.time, self.fee_wei, decimal.Decimal(0))
 
     def convert_amount_to_spend_transaction(self) -> exchange_transactions.Spend:
+        """Spend ETH transaction amount for USD"""
         return exchange_transactions.Spend(
             self.time, self.amount_wei, self.us_cents_per_eth
         )
@@ -106,7 +109,11 @@ def read_etherscan_wallets(
 
 @dataclasses.dataclass
 class CoinbaseTransferTransaction:
+    """Transaction from Coinbase to self-custody wallet, or vice versa"""
+
     class TransactionType(enum.Enum):
+        """Coinbase transfer direction"""
+
         FROM_COINBASE = enum.auto()
         TO_COINBASE = enum.auto()
 
@@ -118,12 +125,14 @@ class CoinbaseTransferTransaction:
 def convert_coinbase_timestamp_to_datetime(
     coinbase_timestamp: str,
 ) -> datetime.datetime:
+    """Convert Coinbase CSV timestamp string to datetime"""
     return datetime.datetime.strptime(coinbase_timestamp, "%Y-%m-%dT%H:%M:%SZ")
 
 
 def convert_coinbase_pro_timestamp_to_datetime(
     coinbase_pro_timestamp: str,
 ) -> datetime.datetime:
+    """Convert Coinbase Pro CSV timestamp string to datetime"""
     return datetime.datetime.strptime(coinbase_pro_timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
 
 
@@ -207,7 +216,11 @@ def read_coinbase_pro_transactions(
             coinbase_pro_rows.append(row)
 
     class CoinbaseProOrderMatchRow:
+        """ETH or USD acquired/sold in Coinbase Pro ETH/USD trade"""
+
         class Unit(enum.Enum):
+            """Currency unit acquired/sold"""
+
             ETH = enum.auto()
             USD = enum.auto()
 
