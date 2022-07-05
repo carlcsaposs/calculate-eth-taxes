@@ -17,7 +17,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # pylint: disable=missing-docstring
 import datetime
 
-
 import carlcsaposs.calculate_eth_taxes.currency as currency
 import carlcsaposs.calculate_eth_taxes.exchange_transactions as exchange_transactions
 

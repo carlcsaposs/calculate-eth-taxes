@@ -18,7 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import datetime
 import decimal
 
-
 import carlcsaposs.calculate_eth_taxes.currency as currency
 import carlcsaposs.calculate_eth_taxes.exchange_transactions as exchange_transactions
 import carlcsaposs.calculate_eth_taxes.tax_optimizer as tax_optimizer
