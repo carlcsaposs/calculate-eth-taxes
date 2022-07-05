@@ -29,17 +29,17 @@ def test_sort_transactions():
         exchange_transactions.Spend(
             datetime.datetime(2021, 3, 17, 4, 2, 3),
             3583178900000000000,
-            300000,
+            decimal.Decimal("300000"),
         ),
         exchange_transactions.Acquire(
             datetime.datetime(2021, 3, 17, 4, 2, 4),
             53583178900000000000,
-            400000,
+            decimal.Decimal("400000"),
         ),
         exchange_transactions.Spend(
             datetime.datetime(2021, 3, 17, 4, 3, 1),
             3583178900000000000,
-            300000,
+            decimal.Decimal("300000"),
         ),
     ]
     processor = transaction_processor._TransactionProcessor(
@@ -73,12 +73,12 @@ def test_convert_transactions_first_in_first_out_one_output():
         exchange_transactions.Acquire(
             datetime.datetime(2022, 3, 17, 16, 21, 3),
             3,
-            280900,
+            decimal.Decimal("280900"),
         ),
         exchange_transactions.Spend(
             datetime.datetime(2022, 3, 17, 16, 21, 4),
             2,
-            280688,
+            decimal.Decimal("280688"),
         ),
     ]
     assert transaction_processor.convert_transactions_to_spent_eth(
@@ -104,22 +104,22 @@ def test_convert_transactions_first_in_first_out_multiple_outputs():
         exchange_transactions.Spend(
             datetime.datetime(2022, 4, 17, 16, 21, 4),
             200000000000000000,
-            4028,
+            decimal.Decimal("4028"),
         ),
         exchange_transactions.Acquire(
             datetime.datetime(2022, 3, 17, 16, 21, 3),
             400000000000000000,
-            280900,
+            decimal.Decimal("280900"),
         ),
         exchange_transactions.Spend(
             datetime.datetime(2022, 3, 17, 16, 21, 4),
             300000000000000000,
-            280688,
+            decimal.Decimal("280688"),
         ),
         exchange_transactions.Acquire(
             datetime.datetime(2021, 3, 17, 16, 21, 3),
             100000000000000000,
-            280900,
+            decimal.Decimal("280900"),
         ),
     ]
     assert transaction_processor.convert_transactions_to_spent_eth(

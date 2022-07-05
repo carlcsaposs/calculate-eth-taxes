@@ -16,6 +16,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 # pylint: disable=missing-docstring
 import datetime
+import decimal
 
 import carlcsaposs.calculate_eth_taxes.currency as currency
 import carlcsaposs.calculate_eth_taxes.exchange_transactions as exchange_transactions
@@ -23,7 +24,7 @@ import carlcsaposs.calculate_eth_taxes.exchange_transactions as exchange_transac
 
 def test_convert_acquire_transaction_to_acquired_eth():
     assert exchange_transactions.Acquire(
-        datetime.datetime(2021, 3, 17), 500, 10340
+        datetime.datetime(2021, 3, 17), 500, decimal.Decimal("10340")
     ).convert_to_acquired_eth() == currency.AcquiredETH(
-        datetime.datetime(2021, 3, 17), 500, 10340
+        datetime.datetime(2021, 3, 17), 500, decimal.Decimal("10340")
     )

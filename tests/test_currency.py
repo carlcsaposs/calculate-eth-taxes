@@ -123,13 +123,13 @@ def test_convert_spent_eth_to_form_8949_row(
 
 @pytest.mark.parametrize(
     ["override_key", "override_value"],
-    [("amount_wei", 0), ("cost_us_cents_per_eth_including_fees", 0)],
+    [("amount_wei", 0), ("cost_us_cents_per_eth_including_fees", decimal.Decimal("0"))],
 )
 def test_acquired_eth_non_positive(override_key: str, override_value: int):
     row_dict = {
         "time_acquired": datetime.datetime(1940, 4, 3),
         "amount_wei": 1,
-        "cost_us_cents_per_eth_including_fees": 120000,
+        "cost_us_cents_per_eth_including_fees": decimal.Decimal("120000"),
     }
     row_dict[override_key] = override_value
     with pytest.raises(ValueError) as exception_info:
@@ -142,7 +142,9 @@ def test_acquired_eth_non_positive(override_key: str, override_value: int):
 
 def test_convert_acquired_eth_to_spent_eth():
     acquired_eth = currency.AcquiredETH(
-        datetime.datetime(2022, 3, 13, 20, 10, 59), 3583178900000000000, 257075
+        datetime.datetime(2022, 3, 13, 20, 10, 59),
+        3583178900000000000,
+        decimal.Decimal("257075"),
     )
     time_spent = datetime.datetime(2022, 3, 13, 20, 11, 2)
     spent_eth = currency.SpentETH(
@@ -161,12 +163,14 @@ def test_convert_acquired_eth_to_spent_eth():
 
 def test_acquired_eth_remove():
     original_instance = currency.AcquiredETH(
-        datetime.datetime(1970, 1, 1), 48290000000000, 392342141232423
+        datetime.datetime(1970, 1, 1),
+        48290000000000,
+        decimal.Decimal("392342141232423"),
     )
     new_instance = currency.AcquiredETH(
         datetime.datetime(1970, 1, 1),
         2390000000000,
-        392342141232423,
+        decimal.Decimal("392342141232423"),
     )
     assert original_instance.remove_wei(2390000000000) == new_instance
     assert original_instance.amount_wei == 48290000000000 - 2390000000000
@@ -175,7 +179,7 @@ def test_acquired_eth_remove():
 @pytest.mark.parametrize("amount", [0, 5030000000000000001])
 def test_acquired_eth_remove_invalid_amount(amount: int):
     acquired_eth = currency.AcquiredETH(
-        datetime.datetime(2034, 11, 29), 5030000000000000000, 1230
+        datetime.datetime(2034, 11, 29), 5030000000000000000, decimal.Decimal("1230")
     )
     with pytest.raises(ValueError) as exception_info:
         acquired_eth.remove_wei(amount)
