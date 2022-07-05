@@ -54,3 +54,15 @@ def test_convert_amount_to_spend_transaction():
             datetime.datetime(2022, 7, 5), 23425000000, decimal.Decimal("10258")
         )
     )
+
+
+def test_convert_coinbase_timestamp_to_datetime():
+    assert file_reader.convert_coinbase_timestamp_to_datetime(
+        "2022-07-05T23:16:51Z"
+    ) == datetime.datetime(2022, 7, 5, 23, 16, 51)
+
+
+def test_convert_coinbase_pro_timestamp_to_datetime():
+    assert file_reader.convert_coinbase_pro_timestamp_to_datetime(
+        "2022-07-05T23:16:51.802Z"
+    ) == datetime.datetime(2022, 7, 5, 23, 16, 51, 802000)
