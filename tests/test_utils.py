@@ -16,6 +16,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 # pylint: disable=missing-docstring
 import datetime
+import decimal
 import pytest
 
 import carlcsaposs.calculate_eth_taxes.utils as utils
@@ -59,3 +60,30 @@ def test_number_domain_validate_number():
 )
 def test_is_long_term(time_acquired, time_spent, result):
     assert utils.is_long_term(time_acquired, time_spent) == result
+
+
+@pytest.mark.parametrize(
+    ["number", "places", "result"],
+    [
+        (decimal.Decimal("1.0050"), 2, decimal.Decimal("1.01")),
+        (decimal.Decimal("1.0249"), 2, decimal.Decimal("1.02")),
+        (decimal.Decimal("1.8"), 0, decimal.Decimal("2")),
+        (decimal.Decimal("-3.254351"), 4, decimal.Decimal("-3.2544")),
+    ],
+)
+def test_round_decimal(number: decimal.Decimal, places: int, result: decimal.Decimal):
+    assert utils.round_decimal(number, places) == result
+
+
+def test_round_decimal_invalid():
+    with pytest.raises(ValueError):
+        utils.round_decimal(decimal.Decimal("3.2"), -1)
+
+
+def test_round_decimal_to_int():
+    assert (
+        utils.round_decimal_to_int(
+            decimal.Decimal("2.4") + decimal.Decimal(".09999999999999999")
+        )
+        == 2
+    )
